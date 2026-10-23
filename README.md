@@ -21,6 +21,4 @@ The program will:
 * Runtime Efficiency: Meet the assignment’s performance requirements for processing a 3D matrix of size (500^3). The expected runtime performance is at least 100 FPS, and an additional 30 FPS is mandatory.
 * Code Quality: Prioritize a clear, maintainable, and well-structured implementation, with emphasis on software design and overall code quality.
 
-The program will be executed from the command line using the following format:
-
-python Ex0.py file.nrrd file.csv file.mp4
+The program will be executed from the command line using the following format: python Ex0.py file.nrrd file.csv file.mp4
