@@ -374,3 +374,91 @@ def pad_gray(img, H, W):
         s = (top + y) * W + left
         out[s:s + w] = data[y * w:(y + 1) * w]
     return bytes(out)
+
+
+
+# --------------------------------------------------------------------------
+# Video writers
+# --------------------------------------------------------------------------
+def _png(w, h, gray):
+    """Gray bytes -> RGB PNG (stdlib only)."""
+    raw = bytearray()
+    for y in range(h):
+        raw.append(0)
+        for v in gray[y * w:(y + 1) * w]:
+            raw += bytes((v, v, v))
+    def chunk(tag, d):
+        c = struct.pack(">I", len(d)) + tag + d
+        return c + struct.pack(">I", zlib.crc32(tag + d) & 0xFFFFFFFF)
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(bytes(raw), 6))
+            + chunk(b"IEND", b""))
+
+
+def _box(tag, *parts):
+    d = b"".join(parts)
+    return struct.pack(">I", 8 + len(d)) + tag + d
+
+
+def write_mp4_stdlib(frames, W, H, path, fps):
+    """Minimal MP4 muxer, PNG-coded frames (no external library). Plays in
+    VLC / QuickTime / most players; one sample per plane."""
+    samples = [_png(W, H, f) for f in frames]
+    ts = 600
+    delta = max(1, int(round(ts / fps)))
+    n = len(samples)
+    dur = delta * n
+    mat = struct.pack(">9I", 0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x40000000)
+    ftyp = _box(b"ftyp", b"isom", struct.pack(">I", 512), b"isomiso2mp41")
+    mdat_payload = b"".join(samples)
+    mdat = _box(b"mdat", mdat_payload)
+    base = len(ftyp) + 8
+    offs, pos = [], base
+    for s in samples:
+        offs.append(pos)
+        pos += len(s)
+
+    mvhd = _box(b"mvhd", struct.pack(">IIIII", 0, 0, 0, ts, dur),
+                struct.pack(">IH", 0x10000, 0x100), b"\0" * 10, mat,
+                b"\0" * 24, struct.pack(">I", 2))
+    tkhd = _box(b"tkhd", struct.pack(">IIIIII", 3, 0, 0, 1, 0, dur), b"\0" * 8,
+                struct.pack(">hhhH", 0, 0, 0, 0), mat,
+                struct.pack(">II", W << 16, H << 16))
+    mdhd = _box(b"mdhd", struct.pack(">IIIIIHH", 0, 0, 0, ts, dur, 0x55C4, 0))
+    hdlr = _box(b"hdlr", struct.pack(">II", 0, 0), b"vide", b"\0" * 12, b"VideoHandler\0")
+    vmhd = _box(b"vmhd", struct.pack(">IHHHH", 1, 0, 0, 0, 0))
+    dinf = _box(b"dinf", _box(b"dref", struct.pack(">II", 0, 1),
+                              _box(b"url ", struct.pack(">I", 1))))
+    entry = _box(b"png ", b"\0" * 6, struct.pack(">H", 1), b"\0" * 16,
+                 struct.pack(">HHIIIHB", W, H, 0x480000, 0x480000, 0, 1, 0),
+                 b"\0" * 31, struct.pack(">Hh", 24, -1))
+    stbl = _box(b"stbl",
+                _box(b"stsd", struct.pack(">II", 0, 1), entry),
+                _box(b"stts", struct.pack(">IIII", 0, 1, n, delta)),
+                _box(b"stsc", struct.pack(">IIIII", 0, 1, 1, 1, 1)),
+                _box(b"stsz", struct.pack(">III", 0, 0, n),
+                     b"".join(struct.pack(">I", len(s)) for s in samples)),
+                _box(b"stco", struct.pack(">II", 0, n),
+                     b"".join(struct.pack(">I", o) for o in offs)))
+    minf = _box(b"minf", vmhd, dinf, stbl)
+    moov = _box(b"moov", mvhd, _box(b"trak", tkhd, _box(b"mdia", mdhd, hdlr, minf)))
+    with open(path, "wb") as f:
+        f.write(ftyp + mdat + moov)
+
+
+def write_video(frames, W, H, path, fps):
+    """Prefer H.264 through imageio (if installed), else the built-in muxer."""
+    if np is not None and imageio is not None:
+        try:
+            with imageio.get_writer(path, fps=fps, codec="libx264",
+                                    pixelformat="yuv420p", macro_block_size=2) as wr:
+                for f in frames:
+                    g = np.frombuffer(f, np.uint8).reshape(H, W)
+                    wr.append_data(np.repeat(g[:, :, None], 3, axis=2))
+            return "H.264 (imageio)"
+        except Exception as e:
+            print("[info] imageio failed (%s) - using the built-in writer" % e,
+                  file=sys.stderr)
+    write_mp4_stdlib(frames, W, H, path, fps)
+    return "built-in MP4 writer (PNG frames)"
