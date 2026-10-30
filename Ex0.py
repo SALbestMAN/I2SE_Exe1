@@ -160,3 +160,42 @@ def load_nrrd(path):
     if little != (sys.byteorder == "little"):
         a.byteswap()
     return Volume(a, (sx, sy, sz))   # flat, index = x + sx*(y + sy*z)
+
+# --------------------------------------------------------------------------
+# CSV -> planes
+# --------------------------------------------------------------------------
+@dataclass
+class Plane:
+    a1: tuple  # start of the first side  (a  or a')
+    b: tuple   # end of the first side
+    a2: tuple  # start of the second side (a  or a'')
+    c: tuple   # end of the second side
+
+
+def load_planes(path):
+    """One entry per CSV data row: a Plane, or None for an invalid row."""
+    planes = []
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        rows = list(csv.reader(f))
+    for ln, row in enumerate(rows[1:], start=2):  # skip header
+        row = [r.strip() for r in row]
+        if not any(row):
+            continue
+        try:
+            nv = float(row[0])
+            if not math.isfinite(nv) or nv not in (3.0, 4.0):
+                raise ValueError
+            n = int(nv)
+            need = 1 + 3 * n
+            if len(row) < need or any(not r for r in row[1:need]) or any(row[need:]):   # missing / extra values
+                raise ValueError
+            vals = [float(r) for r in row[1:need]]
+            if not all(math.isfinite(v) for v in vals):   # rejects NaN / inf
+                raise ValueError
+        except (ValueError, IndexError):
+            print("[warn] CSV line %d is invalid - error frame written" % ln, file=sys.stderr)
+            planes.append(None)   # keep one video frame per CSV row
+            continue
+        p = [tuple(vals[i:i + 3]) for i in range(0, len(vals), 3)]
+        planes.append(Plane(p[0], p[1], p[0], p[2]) if n == 3 else Plane(p[0], p[1], p[2], p[3]))
+    return planes
