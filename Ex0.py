@@ -525,3 +525,105 @@ def make_error_frame(height, width, number):
     text("ERROR", top, scale)
     text(line2, top + 7 * scale + gap, scale)
     return bytes(buf)
+
+# --------------------------------------------------------------------------
+# Input discovery (project folder = the folder containing this script)
+# --------------------------------------------------------------------------
+def project_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def find_in_project(exts, what):
+    """First file (sorted by name) in the project folder with one of `exts`."""
+    folder = project_dir()
+    found = sorted(f for f in os.listdir(folder)
+                   if f.lower().endswith(exts) and not f.lower().endswith("_output.csv")
+                   and os.path.isfile(os.path.join(folder, f)))
+    if not found:
+        sys.exit("No %s file found in the project folder:\n  %s\n"
+                 "Put it there, or run: python Ex0.py file.nrrd file.csv file.mp4"
+                 % (what, folder))
+    if len(found) > 1:
+        print("[info] several %s files found, using '%s' (others: %s)"
+              % (what, found[0], ", ".join(found[1:])))
+    return os.path.join(folder, found[0])
+
+
+# --------------------------------------------------------------------------
+# main
+# --------------------------------------------------------------------------
+def _run(argv=None):
+    ap = argparse.ArgumentParser(
+        description="Project a 3D NRRD volume onto the planes listed in a CSV file "
+                    "and write one video frame per plane.")
+    ap.add_argument("nrrd", nargs="?", help="input 3D volume (.nrrd); default: first .nrrd in the project folder")
+    ap.add_argument("csv", nargs="?", help="input planes (.csv); default: first .csv in the project folder")
+    ap.add_argument("mp4", nargs="?", help="output video (.mp4); default: <csv name>_output.mp4")
+    ap.add_argument("--fps", type=float, default=1.0,
+                    help="video frame rate (default 1: each plane shown for 1s)")
+    args = ap.parse_args(argv)
+    if not math.isfinite(args.fps) or args.fps <= 0:
+        ap.error("--fps must be a positive finite number")
+
+    if not args.nrrd:
+        args.nrrd = find_in_project((".nrrd",), "NRRD")
+    if not args.csv:
+        args.csv = find_in_project((".csv",), "CSV")
+    if not args.mp4:
+        args.mp4 = os.path.splitext(args.csv)[0] + "_output.mp4"
+    print("NRRD: %s\nCSV : %s" % (args.nrrd, args.csv))
+
+    print("Mode: %s" % ("NumPy (fast)" if np is not None
+                        else "built-in Python (no extra libraries; slower)"))
+    vol = load_nrrd(args.nrrd)
+    print("Volume %s" % (vol.shape,))
+    planes = load_planes(args.csv)
+    if not planes:
+        sys.exit("No planes found in " + args.csv)
+
+    project = project_np if np is not None else project_py
+    images = []                                        # (h, w, bytes) for valid planes, None for invalid ones
+    for i, pl in enumerate(planes):
+        t0 = time.perf_counter()
+        if pl is None:                                 # malformed CSV row (already reported by load_planes)
+            images.append(None)
+            continue
+        try:
+            E = project(vol, pl)
+        except ValueError as e:                        # InvalidPlaneError, plane too large, ...
+            print("[warn] plane %d: %s - error frame written" % (i + 1, e), file=sys.stderr)
+            images.append(None)                        # keeps one video frame per CSV row
+            continue
+        dt = time.perf_counter() - t0
+        img = to_gray_bytes(E, vol.vmin, vol.vmax)   # one global window
+        print("plane %d: %dx%d  (%.1f ms, %.1f fps)"
+              % (i + 1, img[1], img[0], dt * 1e3, 1.0 / max(dt, 1e-9)))
+        images.append(img)
+
+    assert len(images) == len(planes)   # one frame per CSV row, same order
+    valid = [im for im in images if im is not None]
+    n_err = len(images) - len(valid)
+
+    # all video frames share one size: the largest valid plane (>= 160x100 so the marking is readable)
+    H = max([im[0] for im in valid] + ([100] if n_err else [1]))
+    W = max([im[1] for im in valid] + ([160] if n_err else [1]))
+    if not valid:
+        H, W = 256, 256
+    H, W = H + (H % 2), W + (W % 2)
+    frames = [pad_gray(im, H, W) if im is not None else make_error_frame(H, W, i + 1)
+              for i, im in enumerate(images)]
+    kind = write_video(frames, W, H, args.mp4, args.fps)
+    print("Wrote %d frame(s) (%d valid, %d error), %dx%d -> %s  [%s]"
+          % (len(images), len(valid), n_err, W, H, args.mp4, kind))
+
+
+def main(argv=None):
+    """Run the program; I/O and format problems end with a clear message and exit status 1."""
+    try:
+        _run(argv)
+    except (OSError, ValueError, KeyError, NotImplementedError, EOFError, zlib.error) as e:
+        sys.exit("Error: %s: %s" % (type(e).__name__, e))
+
+
+if __name__ == "__main__":
+    main()
