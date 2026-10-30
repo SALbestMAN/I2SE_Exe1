@@ -284,7 +284,7 @@ def _check_width(d12_max):
         raise ValueError("Plane too wide (row length %.0f)" % d12_max)
 
     
-    def project_np(vol, pl):
+def project_np(vol, pl):
     """Vectorised projection (no Python loops over pixels). Returns (rows, cols) ndarray.
     Row y: a1 = a' + (y+1)*step1, a2 = a'' + (y+1)*step2, d12 = |a1a2|,
     samples x1 = 0..floor(d12) at a1 + x1*dp, written to column round(Dbc/2 - d12/2 + x1) (Dbc = exact |bc|, as in the assignment)."""
@@ -346,3 +346,31 @@ def project_py(vol, pl):
                 row[x] = M[ix + sx * iy + sxy * iz]
         E.append(row)
     return E
+
+def to_gray_bytes(E, lo, hi):
+    """Global window -> 0..255. Returns (height, width, bytes row-major)."""
+    scale = 255.0 / (hi - lo) if hi > lo else 0.0
+    if np is not None:
+        out = (np.clip(E.astype(np.float32), lo, hi) - lo) * scale
+        out = out.astype(np.uint8)
+        return out.shape[0], out.shape[1], out.tobytes()
+    h, w = len(E), len(E[0])
+    buf = bytearray(h * w)
+    k = 0
+    for row in E:
+        for v in row:
+            if v > lo:
+                buf[k] = int((min(v, hi) - lo) * scale)
+            k += 1
+    return h, w, bytes(buf)
+
+
+def pad_gray(img, H, W):
+    """Centre a (h, w, bytes) gray image on a black H x W canvas."""
+    h, w, data = img
+    top, left = (H - h) // 2, (W - w) // 2
+    out = bytearray(H * W)
+    for y in range(h):
+        s = (top + y) * W + left
+        out[s:s + w] = data[y * w:(y + 1) * w]
+    return bytes(out)
