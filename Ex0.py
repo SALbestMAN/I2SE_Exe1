@@ -199,3 +199,88 @@ def load_planes(path):
         p = [tuple(vals[i:i + 3]) for i in range(0, len(vals), 3)]
         planes.append(Plane(p[0], p[1], p[0], p[2]) if n == 3 else Plane(p[0], p[1], p[2], p[3]))
     return planes
+
+# --------------------------------------------------------------------------
+# Projection
+# --------------------------------------------------------------------------
+MAX_SIDE = 4096     # largest plane side accepted (volumes are < 1024 per axis)
+
+
+def round_nearest(v):
+    """Nearest integer, exact halves away from zero (same rule in both modes)."""
+    return int(math.floor(v + 0.5)) if v >= 0 else int(math.ceil(v - 0.5))
+
+
+def _round_np(a):
+    """Vectorised round_nearest (halves away from zero)."""
+    r = np.floor(a + 0.5)
+    if a.min() < 0:                                  # only negative exact halves differ
+        r -= (a < 0) & (r == a + 0.5)
+    return r.astype(np.int64)
+
+
+EPS = 0.001      # tolerance given by the instructor (Q&A 1: "EPS can be assumed to be 0.001")
+
+
+class InvalidPlaneError(ValueError):
+    """The point set is not a valid plane according to the instructor's Q&A rules."""
+
+
+def _geometry(pl):
+    """Validate the plane (instructor Q&A) and return the per-row steps and the image size.
+
+    Valid plane (EPS = 0.001):
+      * |dist(a1,b) - dist(a2,c)| < EPS                      (3 points: a1 = a2 = a)
+      * dist(a1,a2) <= dist(b,c)                             (4 points)
+      * a1->b and a2->c lie on one plane                     (4th point within EPS of the plane of the other three)
+    Anything else raises InvalidPlaneError. Every row advances by exactly one unit vector
+    (a1 = a1 + v(ab), a2 = a2 + v(ac)), as in the assignment. The loop `y < Dab` runs
+    ceil(Dab) times -> rows = ceil(Dab); cols = ceil(Dbc)."""
+    ab = [pl.b[i] - pl.a1[i] for i in range(3)]
+    ac = [pl.c[i] - pl.a2[i] for i in range(3)]
+    a12 = [pl.a2[i] - pl.a1[i] for i in range(3)]
+    dab, dac, dbc = math.dist(pl.a1, pl.b), math.dist(pl.a2, pl.c), math.dist(pl.b, pl.c)
+    d12 = math.sqrt(sum(t * t for t in a12))
+    if min(dab, dac, dbc) <= 1e-12:
+        raise InvalidPlaneError("degenerate plane (coincident points)")
+    if abs(dab - dac) >= EPS:
+        raise InvalidPlaneError("|dist(a1,b) - dist(a2,c)| = %.4f is not < EPS (%g): not isosceles"
+                                % (abs(dab - dac), EPS))
+    cross = lambda u, v: (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+    if d12 > 1e-12:                                      # 4 distinct start points (trapezoid)
+        if d12 > dbc + 1e-9:
+            raise InvalidPlaneError("dist(a1,a2) = %.4f exceeds dist(b,c) = %.4f" % (d12, dbc))
+        # The plane is defined by the best-conditioned triple of the 4 points (largest triangle area),
+        # NOT necessarily (a1,b,a2): a2 may lie on the segment a1->b and the set is still a valid plane.
+        pts = (pl.a1, pl.b, pl.a2, pl.c)
+        best = None
+        for i, j, k, m in ((0, 1, 2, 3), (0, 1, 3, 2), (0, 2, 3, 1), (1, 2, 3, 0)):
+            u = [pts[j][t] - pts[i][t] for t in range(3)]
+            v = [pts[k][t] - pts[i][t] for t in range(3)]
+            n = cross(u, v)
+            nl = math.sqrt(sum(t * t for t in n))
+            if best is None or nl > best[0]:
+                best = (nl, n, i, m)
+        nl, n, i, m = best
+        if nl <= 1e-9 * max(dab, dbc, d12) ** 2:
+            raise InvalidPlaneError("degenerate plane (all 4 points are collinear)")
+        off = abs(sum(n[t] * (pts[m][t] - pts[i][t]) for t in range(3))) / nl
+        if off >= EPS:
+            raise InvalidPlaneError("the 4 points are not on one plane (one point is %.4f off the plane of the other three)" % off)
+    else:                                                # triangle
+        n = cross(ab, ac)
+        if math.sqrt(sum(t * t for t in n)) <= 1e-9 * dab * dac:
+            raise InvalidPlaneError("degenerate plane (a, b, c are collinear)")
+    rows, cols = math.ceil(dab - 1e-9), math.ceil(dbc - 1e-9)
+    if rows > MAX_SIDE or cols > MAX_SIDE:
+        raise ValueError("Plane too large (%dx%d, limit %d)" % (rows, cols, MAX_SIDE))
+    step1 = [t / dab for t in ab]                        # unit vectors v(a1,b), v(a2,c)
+    step2 = [t / dac for t in ac]
+    return step1, step2, rows, cols, dbc
+
+
+def _check_width(d12_max):
+    if d12_max > 2 * MAX_SIDE:
+        raise ValueError("Plane too wide (row length %.0f)" % d12_max)
+
+    
