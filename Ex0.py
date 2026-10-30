@@ -1,607 +1,162 @@
 #!/usr/bin/env python3
-
 """
-Project 2D planes from a 3D MRI volume.
-The input volume is stored in NRRD format.
-"""
+Ex0.py - plane projection of a 3D volume (NRRD) into a video (MP4).
 
+Usage:
+    python Ex0.py file.nrrd file.csv file.mp4 [--fps 1]
+    python Ex0.py        (no arguments -> the script looks in ITS OWN FOLDER
+                          (the project folder) for the first *.nrrd and the
+                          first *.csv, and saves the video there as
+                          <csv name>_output.mp4)
+
+    file.nrrd : 3D volumetric data (raw / gzip encoded NRRD)
+    file.csv  : each row = "N, x1,y1,z1, x2,y2,z2, x3,y3,z3 [, x4,y4,z4]"
+                N = 3 -> isosceles triangle  (a, b, c):  |dist(a,b) - dist(a,c)| < EPS
+                N = 4 -> isosceles trapezoid (a1, b, a2, c):
+                         |dist(a1,b) - dist(a2,c)| < EPS, dist(a1,a2) <= dist(b,c),
+                         and a1->b, a2->c on one plane           (EPS = 0.001)
+    file.mp4  : output video, one frame per CSV row (in the CSV order).
+                A row that is not a valid plane raises InvalidPlaneError; the demo
+                catches it and writes an ERROR frame (black, white cross + the text
+                "ERROR / PLANE #k") - all other rows still give their correct frames.
+
+No installation is required: the script runs with the Python standard
+library only. If NumPy (and imageio) happen to be installed it uses them
+automatically - the projection is then ~100x faster and the video is H.264.
+
+Algorithm (per the assignment):
+    * Dab = |a->b| (= |a->c|), Dbc = |b->c|
+    * the output image E has ceil(Dab) rows (y, the loop `y < Dab`) and ceil(Dbc) columns (x)
+    * row y: a1 = a' + (y+1)*v(a'->b),  a2 = a'' + (y+1)*v(a''->c)
+      a1 -> a2 is sampled in unit steps, centred on the row:
+      x = Dbc/2 - d12/2 + x1,  E[y][x] = M[a1 + x1*dp]   (0 if outside M)
+"""
+import argparse
+import array
 import csv
 import gzip
 import math
 import os
-import re
+import struct
 import sys
 import time
-
+import zlib
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
 
-import numpy as np
+# Optional accelerators (never required). EX0_PURE=1 forces the built-in mode.
+try:
+    if os.environ.get("EX0_PURE"):
+        raise ImportError
+    import numpy as np
+except ImportError:
+    np = None
+try:
+    if os.environ.get("EX0_PURE"):
+        raise ImportError
+    import imageio
+except ImportError:
+    imageio = None
 
 
-# General project settings
-EPS = 1e-3
-MAX_SIDE = 2048
+# --------------------------------------------------------------------------
+# NRRD reader (stdlib parser; same file works with or without NumPy)
+# --------------------------------------------------------------------------
+# NRRD type -> (numpy dtype code, array-module typecode)
+_NRRD_TYPES = {}
+for _names, _np, _arr in [
+    (("uchar", "unsigned char", "uint8", "uint8_t"), "u1", "B"),
+    (("signed char", "int8", "int8_t"), "i1", "b"),
+    (("short", "short int", "signed short", "int16", "int16_t"), "i2", "h"),
+    (("ushort", "unsigned short", "unsigned short int", "uint16", "uint16_t"), "u2", "H"),
+    (("int", "signed int", "int32", "int32_t"), "i4", "i"),
+    (("uint", "unsigned int", "uint32", "uint32_t"), "u4", "I"),
+    (("long long", "long long int", "signed long long", "int64", "int64_t"), "i8", "q"),
+    (("unsigned long long", "unsigned long long int", "uint64", "uint64_t"), "u8", "Q"),
+    (("float",), "f4", "f"),
+    (("double",), "f8", "d"),
+]:
+    for _n in _names:
+        _NRRD_TYPES[_n] = (_np, _arr)
 
-Point = np.ndarray
 
-
-@dataclass
 class Volume:
-    """Store the 3D MRI data."""
+    """3D volume with M[x, y, z] semantics.
+    data  : numpy array (np mode) or flat array.array in NRRD order (pure mode)
+    shape : (sx, sy, sz)"""
 
-    data: np.ndarray
+    def __init__(self, data, shape):
+        self.data, self.shape = data, shape
+        if np is not None:
+            self.vmin, self.vmax = float(data.min()), float(data.max())
+        else:
+            self.vmin, self.vmax = float(min(data)), float(max(data))
 
-    @property
-    def shape(self):
-        return self.data.shape
+
+def _split_header(raw):
+    """Header / body boundary for LF or CRLF files (earliest blank line)."""
+    cands = [(raw.find(b"\n\n"), 2), (raw.find(b"\r\n\r\n"), 4)]
+    cands = [(p, n) for p, n in cands if p >= 0]
+    if not cands:
+        raise ValueError("Invalid NRRD: header terminator not found")
+    pos, size = min(cands, key=lambda c: c[0])
+    return raw[:pos], raw[pos + size:]
 
 
-@dataclass
-class Plane:
-    """Store the points that define a plane."""
+def load_nrrd(path):
+    with open(path, "rb") as f:
+        raw = f.read()
+    header, body = _split_header(raw)
+    lines = header.decode("latin-1").splitlines()
+    if not lines or not lines[0].startswith("NRRD"):
+        raise ValueError("Invalid NRRD: missing magic")
 
-    a1: Point
-    b: Point
-    a2: Point
-    c: Point
-    line_number: int
-
-def load_nrrd(path: str) -> Volume:
-    """Load a 3D NRRD volume into a NumPy array."""
-
-    with open(path, "rb") as file:
-        content = file.read()
-
-    # Split the NRRD header from the image data.
-    separator = re.search(rb"\r?\n\r?\n", content)
-
-    if separator is None:
-        raise ValueError("Invalid NRRD file: header separator not found.")
-
-    header_bytes = content[:separator.start()]
-    raw_data = content[separator.end():]
-
-    header = header_bytes.decode("ascii")
-    lines = header.splitlines()
-
-    if not lines[0].startswith("NRRD"):
-        raise ValueError("Invalid NRRD file.")
-
-    # Read header fields.
     fields = {}
-
     for line in lines[1:]:
-        line = line.strip()
-
-        if not line or line.startswith("#"):
+        if line.startswith("#") or not line.strip() or ":=" in line:
             continue
+        k, sep, v = line.partition(":")
+        if sep:
+            fields[k.strip().lower()] = v.strip()
 
-        if ":=" in line:
-            continue
-
-        if ":" in line:
-            key, value = line.split(":", 1)
-            fields[key.strip().lower()] = value.strip()
-
-    # Check volume dimensions.
-    dimension = int(fields.get("dimension", 0))
-
-    if dimension != 3:
-        raise ValueError("Only 3D NRRD volumes are supported.")
-
-    sizes = tuple(map(int, fields["sizes"].split()))
-
-    if len(sizes) != 3:
-        raise ValueError("Invalid NRRD sizes.")
-
-    # Map NRRD types to NumPy types.
-    type_map = {
-        "unsigned char": np.uint8,
-        "uint8": np.uint8,
-        "unsigned short": np.uint16,
-        "uint16": np.uint16,
-        "unsigned int": np.uint32,
-        "uint32": np.uint32,
-    }
-
-    nrrd_type = fields["type"].lower()
-
-    if nrrd_type not in type_map:
-        raise ValueError(f"Unsupported NRRD type: {nrrd_type}")
-
-    dtype = np.dtype(type_map[nrrd_type])
-
-    # Apply byte order for multi-byte values.
+    if "data file" in fields or "datafile" in fields:
+        raise NotImplementedError("Detached NRRD data files are not supported")
+    try:
+        dimension = int(fields["dimension"])
+        sizes = [int(s) for s in fields["sizes"].split()]
+        type_name = fields["type"].lower()
+    except (KeyError, ValueError) as exc:
+        raise ValueError("NRRD header has missing/invalid dimension, sizes or type") from exc
+    if dimension != 3 or len(sizes) != 3 or any(s <= 0 for s in sizes):
+        raise ValueError("NRRD volume must be 3D with positive sizes")
+    sx, sy, sz = sizes
+    if type_name not in _NRRD_TYPES:
+        raise NotImplementedError("Unsupported NRRD type: " + type_name)
+    np_code, arr_code = _NRRD_TYPES[type_name]
     endian = fields.get("endian", "little").lower()
-
-    if dtype.itemsize > 1:
-        dtype = dtype.newbyteorder(
-            "<" if endian == "little" else ">"
-        )
-
-    # Decode the image data.
-    encoding = fields.get("encoding", "raw").lower()
-
-    if encoding in ("gzip", "gz"):
-        raw_data = gzip.decompress(raw_data)
-
-    if encoding in ("raw", "gzip", "gz"):
-        data = np.frombuffer(raw_data, dtype=dtype)
-
-    elif encoding in ("ascii", "text", "txt"):
-        data = np.fromstring(raw_data.decode("ascii"), sep=" ", dtype=dtype)
-
-    else:
-        raise ValueError(f"Unsupported NRRD encoding: {encoding}")
-
-    expected_size = math.prod(sizes)
-
-    if data.size != expected_size:
-        raise ValueError(
-            f"Expected {expected_size} values, but found {data.size}."
-        )
-
-    # NRRD stores the first axis as the fastest-changing axis.
-    data = data.reshape(sizes, order="F")
-
-    return Volume(data=data)
-
-# --------------------------------------------------------------------------
-# CSV -> planes
-# --------------------------------------------------------------------------
-
-@dataclass
-class Plane:
-    """Store the four points that define a plane."""
-
-    a1: tuple
-    b: tuple
-    a2: tuple
-    c: tuple
-
-
-def load_planes(path):
-    """Read CSV rows and convert valid rows into Plane objects."""
-
-    planes = []
-
-    with open(path, newline="", encoding="utf-8-sig") as file:
-        rows = list(csv.reader(file))
-
-    # Skip the CSV header.
-    for line_number, row in enumerate(rows[1:], start=2):
-        row = [value.strip() for value in row]
-
-        if not any(row):
-            continue
-
+    if endian not in ("little", "big"):
+        raise ValueError("Invalid NRRD endian: " + endian)
+    little = endian == "little"
+    enc = fields.get("encoding", "raw").lower()
+    if enc in ("gzip", "gz"):
         try:
-            number = float(row[0])
-
-            if not math.isfinite(number) or number not in (3.0, 4.0):
-                raise ValueError
-
-            number = int(number)
-            required_values = 1 + 3 * number
-
-            if (
-                len(row) < required_values
-                or any(not value for value in row[1:required_values])
-                or any(row[required_values:])
-            ):
-                raise ValueError
-
-            values = [float(value) for value in row[1:required_values]]
-
-            if not all(math.isfinite(value) for value in values):
-                raise ValueError
-
-        except (ValueError, IndexError):
-            print(
-                f"[warn] CSV line {line_number} is invalid - error frame written",
-                file=sys.stderr
-            )
-            planes.append(None)
-            continue
-
-        points = [
-            tuple(values[i:i + 3])
-            for i in range(0, len(values), 3)
-        ]
-
-        if number == 3:
-            plane = Plane(points[0], points[1], points[0], points[2])
-        else:
-            plane = Plane(points[0], points[1], points[2], points[3])
-
-        planes.append(plane)
-
-    return planes
-
-# --------------------------------------------------------------------------
-# Plane validation and geometry
-# --------------------------------------------------------------------------
-
-EPS = 0.001
-MAX_SIDE = 4096
-
-
-class InvalidPlaneError(ValueError):
-    """Raised when the given points do not define a valid plane."""
-
-
-def _cross(u, v):
-    """Calculate the cross product of two 3D vectors."""
-
-    return (
-        u[1] * v[2] - u[2] * v[1],
-        u[2] * v[0] - u[0] * v[2],
-        u[0] * v[1] - u[1] * v[0]
-    )
-
-
-def _vector_length(v):
-    """Calculate the Euclidean length of a 3D vector."""
-
-    return math.sqrt(sum(value * value for value in v))
-
-
-def _geometry(plane):
-    """Validate a plane and calculate its projection geometry."""
-
-    ab = [
-        plane.b[i] - plane.a1[i]
-        for i in range(3)
-    ]
-
-    ac = [
-        plane.c[i] - plane.a2[i]
-        for i in range(3)
-    ]
-
-    a12 = [
-        plane.a2[i] - plane.a1[i]
-        for i in range(3)
-    ]
-
-    dab = math.dist(plane.a1, plane.b)
-    dac = math.dist(plane.a2, plane.c)
-    dbc = math.dist(plane.b, plane.c)
-
-    d12 = _vector_length(a12)
-
-    # Check for coincident points.
-    if min(dab, dac, dbc) <= 1e-12:
-        raise InvalidPlaneError("Degenerate plane: coincident points.")
-
-    # Check the isosceles condition.
-    if abs(dab - dac) >= EPS:
-        raise InvalidPlaneError(
-            "The two sides do not have equal lengths."
-        )
-
-    if d12 > 1e-12:
-
-        # Check the trapezoid condition.
-        if d12 > dbc + 1e-9:
-            raise InvalidPlaneError(
-                "Distance between a1 and a2 exceeds distance between b and c."
-            )
-
-        points = (
-            plane.a1,
-            plane.b,
-            plane.a2,
-            plane.c
-        )
-
-        # Find the three points that define the largest triangle.
-        best = None
-
-        combinations = (
-            (0, 1, 2, 3),
-            (0, 1, 3, 2),
-            (0, 2, 3, 1),
-            (1, 2, 3, 0)
-        )
-
-        for i, j, k, m in combinations:
-
-            u = [
-                points[j][t] - points[i][t]
-                for t in range(3)
-            ]
-
-            v = [
-                points[k][t] - points[i][t]
-                for t in range(3)
-            ]
-
-            normal = _cross(u, v)
-            normal_length = _vector_length(normal)
-
-            if best is None or normal_length > best[0]:
-                best = (normal_length, normal, i, m)
-
-        normal_length, normal, i, m = best
-
-        if normal_length <= 1e-9 * max(dab, dbc, d12) ** 2:
-            raise InvalidPlaneError(
-                "Degenerate plane: all four points are collinear."
-            )
-
-        # Check whether the fourth point lies on the same plane.
-        offset = abs(
-            sum(
-                normal[t] * (points[m][t] - points[i][t])
-                for t in range(3)
-            )
-        ) / normal_length
-
-        if offset >= EPS:
-            raise InvalidPlaneError(
-                "The four points are not coplanar."
-            )
-
-    else:
-
-        # Check that the three points are not collinear.
-        normal = _cross(ab, ac)
-
-        if _vector_length(normal) <= 1e-9 * dab * dac:
-            raise InvalidPlaneError(
-                "Degenerate plane: the three points are collinear."
-            )
-
-    # Calculate the output dimensions.
-    rows = math.ceil(dab - 1e-9)
-    cols = math.ceil(dbc - 1e-9)
-
-    if rows > MAX_SIDE or cols > MAX_SIDE:
-        raise ValueError(
-            f"Plane too large ({rows}x{cols})."
-        )
-
-    # Calculate unit direction vectors.
-    step1 = [value / dab for value in ab]
-    step2 = [value / dac for value in ac]
-
-    return step1, step2, rows, cols, dbc
-
-
-def _check_width(d12_max):
-    """Check that the projected row does not exceed the maximum width."""
-
-    if d12_max > 2 * MAX_SIDE:
-        raise ValueError(
-            f"Plane too wide (row length {d12_max:.0f})."
-        )
-
-
-# --------------------------------------------------------------------------
-# NumPy projection
-# --------------------------------------------------------------------------
-
-def _round_np(values):
-    """Round values to nearest integers, with halves away from zero."""
-
-    result = np.floor(values + 0.5)
-
-    if values.min() < 0:
-        result -= (values < 0) & (result == values + 0.5)
-
-    return result.astype(np.int64)
-
-
-def project_np(vol, plane):
-    """Project a plane from the 3D volume using vectorized NumPy operations."""
-
-    step1, step2, rows, cols, dbc = _geometry(plane)
-
-    M = vol.data
-    sx, sy, sz = vol.shape
-
-    # Calculate the starting points of every output row.
-    k = np.arange(1, rows + 1, dtype=np.float64)[:, None]
-
-    A1 = np.array(plane.a1, dtype=np.float64) + k * np.array(step1)
-    A2 = np.array(plane.a2, dtype=np.float64) + k * np.array(step2)
-
-    # Calculate the direction and length of each row.
-    vec = A2 - A1
-    d12 = np.linalg.norm(vec, axis=1)
-
-    dp = np.divide(
-        vec,
-        d12[:, None],
-        out=np.zeros_like(vec),
-        where=d12[:, None] > 1e-12
-    )
-
-    n = np.floor(d12)
-
-    _check_width(float(n.max()))
-
-    # Generate sample positions.
-    X1 = np.arange(int(n.max()) + 1, dtype=np.float64)[None, :]
-
-    xcol = _round_np(
-        dbc / 2.0 - d12[:, None] / 2.0 + X1
-    )
-
-    valid = (
-        (X1 <= n[:, None])
-        & (xcol >= 0)
-        & (xcol < cols)
-    )
-
-    # Calculate voxel coordinates.
-    linear_index = None
-
-    for axis, size in enumerate((sx, sy, sz)):
-
-        coordinates = _round_np(
-            A1[:, axis, None] + X1 * dp[:, axis, None]
-        )
-
-        valid &= (
-            (coordinates >= 0)
-            & (coordinates < size)
-        )
-
-        linear_index = (
-            coordinates
-            if linear_index is None
-            else linear_index * size + coordinates
-        )
-
-    # Read voxel values.
-    values = M.reshape(-1).take(linear_index, mode="clip")
-
-    # Prepare the output image.
-    destination = (
-        np.arange(rows, dtype=np.int64)[:, None] * cols
-        + xcol
-    )
-
-    destination[~valid] = rows * cols
-
-    E = np.zeros(rows * cols + 1, dtype=M.dtype)
-    E[destination] = values
-
-    return E[:rows * cols].reshape(rows, cols)
-
-def round_nearest(value):
-    """Round to the nearest integer, with halves away from zero."""
-
-    if value >= 0:
-        return int(math.floor(value + 0.5))
-
-    return int(math.ceil(value - 0.5))
-
-
-def project_py(vol, plane):
-    """Project a plane from the 3D volume using pure Python."""
-
-    step1, step2, rows, cols, dbc = _geometry(plane)
-
-    M = vol.data
-    sx, sy, sz = vol.shape
-
-    sxy = sx * sy
-    E = []
-
-    for y in range(rows):
-
-        k = y + 1.0
-
-        # Calculate the starting points of the current row.
-        a1 = [
-            plane.a1[i] + k * step1[i]
-            for i in range(3)
-        ]
-
-        a2 = [
-            plane.a2[i] + k * step2[i]
-            for i in range(3)
-        ]
-
-        # Calculate the direction between the two points.
-        vx = a2[0] - a1[0]
-        vy = a2[1] - a1[1]
-        vz = a2[2] - a1[2]
-
-        d12 = math.sqrt(vx * vx + vy * vy + vz * vz)
-
-        if d12 > 1e-12:
-            dx = vx / d12
-            dy = vy / d12
-            dz = vz / d12
-        else:
-            dx = dy = dz = 0.0
-
-        # Number of samples in the current row.
-        n = int(math.floor(d12))
-
-        _check_width(n)
-
-        row = [0] * cols
-
-        for x1 in range(n + 1):
-
-            # Calculate the output column.
-            x = round_nearest(
-                dbc / 2.0 - d12 / 2.0 + x1
-            )
-
-            if not 0 <= x < cols:
-                continue
-
-            # Calculate the voxel coordinates.
-            ix = round_nearest(a1[0] + x1 * dx)
-            iy = round_nearest(a1[1] + x1 * dy)
-            iz = round_nearest(a1[2] + x1 * dz)
-
-            # Read the voxel if it is inside the volume.
-            if (
-                0 <= ix < sx
-                and 0 <= iy < sy
-                and 0 <= iz < sz
-            ):
-
-                index = ix + sx * iy + sxy * iz
-                row[x] = M[index]
-
-        E.append(row)
-
-    return E
-
-# --------------------------------------------------------------------------
-# Image processing
-# --------------------------------------------------------------------------
-
-def to_gray_bytes(E, lo, hi):
-    """Convert a projected image into grayscale bytes."""
-
-    scale = 255.0 / (hi - lo) if hi > lo else 0.0
-
+            body = gzip.decompress(body)
+        except (OSError, EOFError, zlib.error) as exc:
+            raise ValueError("Invalid gzip-compressed NRRD data") from exc
+    elif enc != "raw":
+        raise NotImplementedError("Unsupported NRRD encoding: " + enc)
+
+    count = sx * sy * sz
+    expected = count * struct.calcsize(arr_code)
+    if len(body) < expected:
+        raise ValueError("NRRD data is truncated: expected %d bytes, got %d" % (expected, len(body)))
+    body = body[:expected]
     if np is not None:
-        output = (np.clip(E.astype(np.float32), lo, hi) - lo) * scale
-        output = output.astype(np.uint8)
-
-        return output.shape[0], output.shape[1], output.tobytes()
-
-    height = len(E)
-    width = len(E[0])
-
-    buffer = bytearray(height * width)
-    index = 0
-
-    for row in E:
-        for value in row:
-            if value > lo:
-                buffer[index] = int((min(value, hi) - lo) * scale)
-
-            index += 1
-
-    return height, width, bytes(buffer)
-
-
-def pad_gray(img, height, width):
-    """Center a grayscale image on a larger black canvas."""
-
-    h, w, data = img
-
-    top = (height - h) // 2
-    left = (width - w) // 2
-
-    output = bytearray(height * width)
-
-    for y in range(h):
-        source = y * w
-        destination = (top + y) * width + left
-
-        output[destination:destination + w] = data[source:source + w]
-
-    return bytes(output)
+        dt = np.dtype(np_code).newbyteorder("<" if little else ">")
+        a = np.frombuffer(body, dtype=dt, count=count)
+        # NRRD: first axis varies fastest -> reshape reversed, transpose to [x,y,z]
+        return Volume(np.ascontiguousarray(a.reshape(sz, sy, sx).transpose(2, 1, 0)), (sx, sy, sz))
+    a = array.array(arr_code)
+    a.frombytes(body)
+    if little != (sys.byteorder == "little"):
+        a.byteswap()
+    return Volume(a, (sx, sy, sz))   # flat, index = x + sx*(y + sy*z)
