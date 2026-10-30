@@ -20,9 +20,8 @@ Usage:
                 catches it and writes an ERROR frame (black, white cross + the text
                 "ERROR / PLANE #k") - all other rows still give their correct frames.
 
-No installation is required: the script runs with the Python standard
-library only. If NumPy (and imageio) happen to be installed it uses them
-automatically - the projection is then ~100x faster and the video is H.264.
+Requires: numpy, pynrrd, imageio (+ imageio-ffmpeg for H.264) and Pillow (installed with
+imageio):   pip install -r requirements.txt
 
 Algorithm (per the assignment):
     * Dab = |a->b| (= |a->c|), Dbc = |b->c|
@@ -32,34 +31,25 @@ Algorithm (per the assignment):
       x = Dbc/2 - d12/2 + x1,  E[y][x] = M[a1 + x1*dp]   (0 if outside M)
 """
 import argparse
-import array
 import csv
-import gzip
 import math
 import os
-import struct
 import sys
 import time
 import zlib
 from dataclasses import dataclass
 
-# Optional accelerators (never required). EX0_PURE=1 forces the built-in mode.
 try:
-    if os.environ.get("EX0_PURE"):
-        raise ImportError
     import numpy as np
-except ImportError:
-    np = None
-try:
-    if os.environ.get("EX0_PURE"):
-        raise ImportError
+    import nrrd
     import imageio
-except ImportError:
-    imageio = None
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError as exc:
+    sys.exit("Missing library '%s'. Install the requirements with:\n"
+             "    pip install -r requirements.txt" % exc.name)
 
 
-# --------------------------------------------------------------------------
-# NRRD reader (stdlib parser; same file works with or without NumPy)
+
 # --------------------------------------------------------------------------
 # NRRD type -> (numpy dtype code, array-module typecode)
 _NRRD_TYPES = {}
