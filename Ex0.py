@@ -471,3 +471,137 @@ def project_np(vol, plane):
     E[destination] = values
 
     return E[:rows * cols].reshape(rows, cols)
+
+def round_nearest(value):
+    """Round to the nearest integer, with halves away from zero."""
+
+    if value >= 0:
+        return int(math.floor(value + 0.5))
+
+    return int(math.ceil(value - 0.5))
+
+
+def project_py(vol, plane):
+    """Project a plane from the 3D volume using pure Python."""
+
+    step1, step2, rows, cols, dbc = _geometry(plane)
+
+    M = vol.data
+    sx, sy, sz = vol.shape
+
+    sxy = sx * sy
+    E = []
+
+    for y in range(rows):
+
+        k = y + 1.0
+
+        # Calculate the starting points of the current row.
+        a1 = [
+            plane.a1[i] + k * step1[i]
+            for i in range(3)
+        ]
+
+        a2 = [
+            plane.a2[i] + k * step2[i]
+            for i in range(3)
+        ]
+
+        # Calculate the direction between the two points.
+        vx = a2[0] - a1[0]
+        vy = a2[1] - a1[1]
+        vz = a2[2] - a1[2]
+
+        d12 = math.sqrt(vx * vx + vy * vy + vz * vz)
+
+        if d12 > 1e-12:
+            dx = vx / d12
+            dy = vy / d12
+            dz = vz / d12
+        else:
+            dx = dy = dz = 0.0
+
+        # Number of samples in the current row.
+        n = int(math.floor(d12))
+
+        _check_width(n)
+
+        row = [0] * cols
+
+        for x1 in range(n + 1):
+
+            # Calculate the output column.
+            x = round_nearest(
+                dbc / 2.0 - d12 / 2.0 + x1
+            )
+
+            if not 0 <= x < cols:
+                continue
+
+            # Calculate the voxel coordinates.
+            ix = round_nearest(a1[0] + x1 * dx)
+            iy = round_nearest(a1[1] + x1 * dy)
+            iz = round_nearest(a1[2] + x1 * dz)
+
+            # Read the voxel if it is inside the volume.
+            if (
+                0 <= ix < sx
+                and 0 <= iy < sy
+                and 0 <= iz < sz
+            ):
+
+                index = ix + sx * iy + sxy * iz
+                row[x] = M[index]
+
+        E.append(row)
+
+    return E
+
+# --------------------------------------------------------------------------
+# Image processing
+# --------------------------------------------------------------------------
+
+def to_gray_bytes(E, lo, hi):
+    """Convert a projected image into grayscale bytes."""
+
+    scale = 255.0 / (hi - lo) if hi > lo else 0.0
+
+    if np is not None:
+        output = (np.clip(E.astype(np.float32), lo, hi) - lo) * scale
+        output = output.astype(np.uint8)
+
+        return output.shape[0], output.shape[1], output.tobytes()
+
+    height = len(E)
+    width = len(E[0])
+
+    buffer = bytearray(height * width)
+    index = 0
+
+    for row in E:
+        for value in row:
+            if value > lo:
+                buffer[index] = int((min(value, hi) - lo) * scale)
+
+            index += 1
+
+    return height, width, bytes(buffer)
+
+
+def pad_gray(img, height, width):
+    """Center a grayscale image on a larger black canvas."""
+
+    h, w, data = img
+
+    top = (height - h) // 2
+    left = (width - w) // 2
+
+    output = bytearray(height * width)
+
+    for y in range(h):
+        source = y * w
+        destination = (top + y) * width + left
+
+        output[destination:destination + w] = data[source:source + w]
+
+    return bytes(output)
