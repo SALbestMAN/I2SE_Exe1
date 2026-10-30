@@ -218,3 +218,164 @@ def load_planes(path):
         planes.append(plane)
 
     return planes
+
+# --------------------------------------------------------------------------
+# Plane validation and geometry
+# --------------------------------------------------------------------------
+
+EPS = 0.001
+MAX_SIDE = 4096
+
+
+class InvalidPlaneError(ValueError):
+    """Raised when the given points do not define a valid plane."""
+
+
+def _cross(u, v):
+    """Calculate the cross product of two 3D vectors."""
+
+    return (
+        u[1] * v[2] - u[2] * v[1],
+        u[2] * v[0] - u[0] * v[2],
+        u[0] * v[1] - u[1] * v[0]
+    )
+
+
+def _vector_length(v):
+    """Calculate the Euclidean length of a 3D vector."""
+
+    return math.sqrt(sum(value * value for value in v))
+
+
+def _geometry(plane):
+    """Validate a plane and calculate its projection geometry."""
+
+    ab = [
+        plane.b[i] - plane.a1[i]
+        for i in range(3)
+    ]
+
+    ac = [
+        plane.c[i] - plane.a2[i]
+        for i in range(3)
+    ]
+
+    a12 = [
+        plane.a2[i] - plane.a1[i]
+        for i in range(3)
+    ]
+
+    dab = math.dist(plane.a1, plane.b)
+    dac = math.dist(plane.a2, plane.c)
+    dbc = math.dist(plane.b, plane.c)
+
+    d12 = _vector_length(a12)
+
+    # Check for coincident points.
+    if min(dab, dac, dbc) <= 1e-12:
+        raise InvalidPlaneError("Degenerate plane: coincident points.")
+
+    # Check the isosceles condition.
+    if abs(dab - dac) >= EPS:
+        raise InvalidPlaneError(
+            "The two sides do not have equal lengths."
+        )
+
+    if d12 > 1e-12:
+
+        # Check the trapezoid condition.
+        if d12 > dbc + 1e-9:
+            raise InvalidPlaneError(
+                "Distance between a1 and a2 exceeds distance between b and c."
+            )
+
+        points = (
+            plane.a1,
+            plane.b,
+            plane.a2,
+            plane.c
+        )
+
+        # Find the three points that define the largest triangle.
+        best = None
+
+        combinations = (
+            (0, 1, 2, 3),
+            (0, 1, 3, 2),
+            (0, 2, 3, 1),
+            (1, 2, 3, 0)
+        )
+
+        for i, j, k, m in combinations:
+
+            u = [
+                points[j][t] - points[i][t]
+                for t in range(3)
+            ]
+
+            v = [
+                points[k][t] - points[i][t]
+                for t in range(3)
+            ]
+
+            normal = _cross(u, v)
+            normal_length = _vector_length(normal)
+
+            if best is None or normal_length > best[0]:
+                best = (normal_length, normal, i, m)
+
+        normal_length, normal, i, m = best
+
+        if normal_length <= 1e-9 * max(dab, dbc, d12) ** 2:
+            raise InvalidPlaneError(
+                "Degenerate plane: all four points are collinear."
+            )
+
+        # Check whether the fourth point lies on the same plane.
+        offset = abs(
+            sum(
+                normal[t] * (points[m][t] - points[i][t])
+                for t in range(3)
+            )
+        ) / normal_length
+
+        if offset >= EPS:
+            raise InvalidPlaneError(
+                "The four points are not coplanar."
+            )
+
+    else:
+
+        # Check that the three points are not collinear.
+        normal = _cross(ab, ac)
+
+        if _vector_length(normal) <= 1e-9 * dab * dac:
+            raise InvalidPlaneError(
+                "Degenerate plane: the three points are collinear."
+            )
+
+    # Calculate the output dimensions.
+    rows = math.ceil(dab - 1e-9)
+    cols = math.ceil(dbc - 1e-9)
+
+    if rows > MAX_SIDE or cols > MAX_SIDE:
+        raise ValueError(
+            f"Plane too large ({rows}x{cols})."
+        )
+
+    # Calculate unit direction vectors.
+    step1 = [value / dab for value in ab]
+    step2 = [value / dac for value in ac]
+
+    return step1, step2, rows, cols, dbc
+
+
+def _check_width(d12_max):
+    """Check that the projected row does not exceed the maximum width."""
+
+    if d12_max > 2 * MAX_SIDE:
+        raise ValueError(
+            f"Plane too wide (row length {d12_max:.0f})."
+        )
+
+
