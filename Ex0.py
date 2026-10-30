@@ -284,3 +284,65 @@ def _check_width(d12_max):
         raise ValueError("Plane too wide (row length %.0f)" % d12_max)
 
     
+    def project_np(vol, pl):
+    """Vectorised projection (no Python loops over pixels). Returns (rows, cols) ndarray.
+    Row y: a1 = a' + (y+1)*step1, a2 = a'' + (y+1)*step2, d12 = |a1a2|,
+    samples x1 = 0..floor(d12) at a1 + x1*dp, written to column round(Dbc/2 - d12/2 + x1) (Dbc = exact |bc|, as in the assignment)."""
+    step1, step2, rows, cols, dbc = _geometry(pl)
+    M = vol.data
+    sx, sy, sz = vol.shape
+    k = np.arange(1, rows + 1, dtype=np.float64)[:, None]
+    A1 = np.array(pl.a1, dtype=np.float64) + k * np.array(step1)
+    A2 = np.array(pl.a2, dtype=np.float64) + k * np.array(step2)
+    vec = A2 - A1
+    d12 = np.linalg.norm(vec, axis=1)
+    dp = np.divide(vec, d12[:, None], out=np.zeros_like(vec), where=d12[:, None] > 1e-12)
+    n = np.floor(d12)                                   # last sample index of each row
+    _check_width(float(n.max()))
+    X1 = np.arange(int(n.max()) + 1, dtype=np.float64)[None, :]
+    xcol = _round_np(dbc / 2.0 - d12[:, None] / 2.0 + X1)
+    ok = (X1 <= n[:, None]) & (xcol >= 0) & (xcol < cols)
+    lin = None                                          # flat voxel index, one contiguous (rows, K) array
+    for axis, size in enumerate((sx, sy, sz)):
+        i = _round_np(A1[:, axis, None] + X1 * dp[:, axis, None])
+        ok &= (i >= 0) & (i < size)
+        lin = i if lin is None else lin * size + i
+    # M is C-contiguous [x,y,z] -> flat index (x*sy + y)*sz + z; invalid entries are masked below
+    vals = M.reshape(-1).take(lin, mode="clip")
+    dest = np.arange(rows, dtype=np.int64)[:, None] * cols + xcol
+    dest[~ok] = rows * cols                             # trash slot for samples that are not written
+    E = np.zeros(rows * cols + 1, dtype=M.dtype)
+    E[dest] = vals
+    return E[:rows * cols].reshape(rows, cols)
+
+
+def project_py(vol, pl):
+    """Pure-Python projection, same maths and rounding as project_np. Returns list of rows."""
+    step1, step2, rows, cols, dbc = _geometry(pl)
+    M, (sx, sy, sz) = vol.data, vol.shape
+    sxy = sx * sy
+    E = []
+    for y in range(rows):
+        k = y + 1.0
+        a1 = [pl.a1[i] + k * step1[i] for i in range(3)]
+        a2 = [pl.a2[i] + k * step2[i] for i in range(3)]
+        vx, vy, vz = a2[0] - a1[0], a2[1] - a1[1], a2[2] - a1[2]
+        d12 = math.sqrt(vx * vx + vy * vy + vz * vz)
+        if d12 > 1e-12:
+            dx, dy, dz = vx / d12, vy / d12, vz / d12
+        else:
+            dx = dy = dz = 0.0
+        n = int(math.floor(d12))
+        _check_width(n)
+        row = [0] * cols
+        for x1 in range(n + 1):
+            x = round_nearest(dbc / 2.0 - d12 / 2.0 + x1)
+            if not 0 <= x < cols:
+                continue
+            ix = round_nearest(a1[0] + x1 * dx)
+            iy = round_nearest(a1[1] + x1 * dy)
+            iz = round_nearest(a1[2] + x1 * dz)
+            if 0 <= ix < sx and 0 <= iy < sy and 0 <= iz < sz:
+                row[x] = M[ix + sx * iy + sxy * iz]
+        E.append(row)
+    return E
