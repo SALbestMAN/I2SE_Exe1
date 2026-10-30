@@ -146,3 +146,75 @@ def load_nrrd(path: str) -> Volume:
     data = data.reshape(sizes, order="F")
 
     return Volume(data=data)
+
+# --------------------------------------------------------------------------
+# CSV -> planes
+# --------------------------------------------------------------------------
+
+@dataclass
+class Plane:
+    """Store the four points that define a plane."""
+
+    a1: tuple
+    b: tuple
+    a2: tuple
+    c: tuple
+
+
+def load_planes(path):
+    """Read CSV rows and convert valid rows into Plane objects."""
+
+    planes = []
+
+    with open(path, newline="", encoding="utf-8-sig") as file:
+        rows = list(csv.reader(file))
+
+    # Skip the CSV header.
+    for line_number, row in enumerate(rows[1:], start=2):
+        row = [value.strip() for value in row]
+
+        if not any(row):
+            continue
+
+        try:
+            number = float(row[0])
+
+            if not math.isfinite(number) or number not in (3.0, 4.0):
+                raise ValueError
+
+            number = int(number)
+            required_values = 1 + 3 * number
+
+            if (
+                len(row) < required_values
+                or any(not value for value in row[1:required_values])
+                or any(row[required_values:])
+            ):
+                raise ValueError
+
+            values = [float(value) for value in row[1:required_values]]
+
+            if not all(math.isfinite(value) for value in values):
+                raise ValueError
+
+        except (ValueError, IndexError):
+            print(
+                f"[warn] CSV line {line_number} is invalid - error frame written",
+                file=sys.stderr
+            )
+            planes.append(None)
+            continue
+
+        points = [
+            tuple(values[i:i + 3])
+            for i in range(0, len(values), 3)
+        ]
+
+        if number == 3:
+            plane = Plane(points[0], points[1], points[0], points[2])
+        else:
+            plane = Plane(points[0], points[1], points[2], points[3])
+
+        planes.append(plane)
+
+    return planes
