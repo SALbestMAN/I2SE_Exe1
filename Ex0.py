@@ -462,3 +462,66 @@ def write_video(frames, W, H, path, fps):
                   file=sys.stderr)
     write_mp4_stdlib(frames, W, H, path, fps)
     return "built-in MP4 writer (PNG frames)"
+
+# --------------------------------------------------------------------------
+# Error frame: black image with a marking (instructor Q&A 3b)
+# --------------------------------------------------------------------------
+_GLYPHS = {
+    "E": ("11111", "10000", "10000", "11110", "10000", "10000", "11111"),
+    "R": ("11110", "10001", "10001", "11110", "10100", "10010", "10001"),
+    "O": ("01110", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "P": ("11110", "10001", "10001", "11110", "10000", "10000", "10000"),
+    "L": ("10000", "10000", "10000", "10000", "10000", "10000", "11111"),
+    "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "N": ("10001", "11001", "10101", "10011", "10001", "10001", "10001"),
+    "#": ("01010", "01010", "11111", "01010", "11111", "01010", "01010"),
+    "0": ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
+    "1": ("00100", "01100", "00100", "00100", "00100", "00100", "01110"),
+    "2": ("01110", "10001", "00001", "00010", "00100", "01000", "11111"),
+    "3": ("11110", "00001", "00001", "01110", "00001", "00001", "11110"),
+    "4": ("00010", "00110", "01010", "10010", "11111", "00010", "00010"),
+    "5": ("11111", "10000", "11110", "00001", "00001", "10001", "01110"),
+    "6": ("00110", "01000", "10000", "11110", "10001", "10001", "01110"),
+    "7": ("11111", "00001", "00010", "00100", "01000", "01000", "01000"),
+    "8": ("01110", "10001", "10001", "01110", "10001", "10001", "01110"),
+    "9": ("01110", "10001", "10001", "01111", "00001", "00010", "01100"),
+    " ": ("00000",) * 7,
+}
+
+
+def make_error_frame(height, width, number):
+    """Grayscale error frame (bytes, height*width): black, white diagonal cross, border and the
+    text 'ERROR' / 'PLANE #<number>' (number = 1-based position of the plane in the CSV)."""
+    buf = bytearray(height * width)
+    for y in range(height):                              # cross + border
+        for x in (round(y * (width - 1) / max(height - 1, 1)),
+                  round((height - 1 - y) * (width - 1) / max(height - 1, 1))):
+            for dx in (0, 1):
+                if 0 <= x + dx < width:
+                    buf[y * width + x + dx] = 110
+    for x in range(width):
+        buf[x] = buf[(height - 1) * width + x] = 255
+    for y in range(height):
+        buf[y * width] = buf[y * width + width - 1] = 255
+
+    def text(line, top, scale):
+        total = len(line) * 6 * scale - scale
+        left = (width - total) // 2
+        for k, ch in enumerate(line):
+            for gy, row in enumerate(_GLYPHS.get(ch, _GLYPHS[" "])):
+                for gx, bit in enumerate(row):
+                    if bit == "1":
+                        for sy_ in range(scale):
+                            for sx_ in range(scale):
+                                yy, xx = top + gy * scale + sy_, left + (k * 6 + gx) * scale + sx_
+                                if 0 <= yy < height and 0 <= xx < width:
+                                    buf[yy * width + xx] = 255
+
+    line2 = "PLANE #%d" % number
+    scale = max(1, min((width - 8) // (len(line2) * 6), (height // 2 - 4) // 7))
+    gap = 3 * scale
+    block = 14 * scale + gap
+    top = max(0, (height - block) // 2)
+    text("ERROR", top, scale)
+    text(line2, top + 7 * scale + gap, scale)
+    return bytes(buf)
