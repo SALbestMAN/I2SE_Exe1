@@ -379,3 +379,95 @@ def _check_width(d12_max):
         )
 
 
+# --------------------------------------------------------------------------
+# NumPy projection
+# --------------------------------------------------------------------------
+
+def _round_np(values):
+    """Round values to nearest integers, with halves away from zero."""
+
+    result = np.floor(values + 0.5)
+
+    if values.min() < 0:
+        result -= (values < 0) & (result == values + 0.5)
+
+    return result.astype(np.int64)
+
+
+def project_np(vol, plane):
+    """Project a plane from the 3D volume using vectorized NumPy operations."""
+
+    step1, step2, rows, cols, dbc = _geometry(plane)
+
+    M = vol.data
+    sx, sy, sz = vol.shape
+
+    # Calculate the starting points of every output row.
+    k = np.arange(1, rows + 1, dtype=np.float64)[:, None]
+
+    A1 = np.array(plane.a1, dtype=np.float64) + k * np.array(step1)
+    A2 = np.array(plane.a2, dtype=np.float64) + k * np.array(step2)
+
+    # Calculate the direction and length of each row.
+    vec = A2 - A1
+    d12 = np.linalg.norm(vec, axis=1)
+
+    dp = np.divide(
+        vec,
+        d12[:, None],
+        out=np.zeros_like(vec),
+        where=d12[:, None] > 1e-12
+    )
+
+    n = np.floor(d12)
+
+    _check_width(float(n.max()))
+
+    # Generate sample positions.
+    X1 = np.arange(int(n.max()) + 1, dtype=np.float64)[None, :]
+
+    xcol = _round_np(
+        dbc / 2.0 - d12[:, None] / 2.0 + X1
+    )
+
+    valid = (
+        (X1 <= n[:, None])
+        & (xcol >= 0)
+        & (xcol < cols)
+    )
+
+    # Calculate voxel coordinates.
+    linear_index = None
+
+    for axis, size in enumerate((sx, sy, sz)):
+
+        coordinates = _round_np(
+            A1[:, axis, None] + X1 * dp[:, axis, None]
+        )
+
+        valid &= (
+            (coordinates >= 0)
+            & (coordinates < size)
+        )
+
+        linear_index = (
+            coordinates
+            if linear_index is None
+            else linear_index * size + coordinates
+        )
+
+    # Read voxel values.
+    values = M.reshape(-1).take(linear_index, mode="clip")
+
+    # Prepare the output image.
+    destination = (
+        np.arange(rows, dtype=np.int64)[:, None] * cols
+        + xcol
+    )
+
+    destination[~valid] = rows * cols
+
+    E = np.zeros(rows * cols + 1, dtype=M.dtype)
+    E[destination] = values
+
+    return E[:rows * cols].reshape(rows, cols)
