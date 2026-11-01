@@ -165,3 +165,15 @@ The sample positions are:
 
 where `x1` starts at zero and increases by one until it reaches the last allowed sample.
 
+### 5.3 Placing Samples in the Output Image
+
+Each sampled point is converted into a column position in the output image.
+
+The column is calculated using:
+
+`xcol = round(Dbc / 2 - d12 / 2 + x1)`
+
+This calculation centers the samples within the row.
+
+The program uses the nearest integer when converting coordinates to voxel indices.
+
