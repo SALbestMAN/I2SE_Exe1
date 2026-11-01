@@ -122,3 +122,9 @@ The system receives a 3D volume stored in an NRRD file.
 
 The system receives the coordinates of the points used to define the planes.
 
+#### 3.2.3 Output Interface
+
+The system creates an MP4 video.
+
+Each frame represents one plane, and the frames follow the order of the CSV file.
+
