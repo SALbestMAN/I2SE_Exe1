@@ -67,3 +67,32 @@ The plane is valid if:
 
 The program also checks that the three points are not on the same straight line.
 
+### 3.2 Plane Defined by 4 Points
+
+The four points are:
+
+- `a1`
+- `b`
+- `a2`
+- `c`
+
+The program checks the following conditions:
+
+1. The distances from `a1` to `b` and from `a2` to `c` must be almost equal:
+
+   `|dist(a1,b) - dist(a2,c)| < EPS`
+
+2. The distance between `a1` and `a2` must not be greater than the distance between `b` and `c`:
+
+   `dist(a1,a2) <= dist(b,c)`
+
+3. All four points must lie on the same plane.
+
+To check the third condition, the program finds the best combination of three points to define a plane. It then calculates the distance of the remaining point from that plane.
+
+The distance must be smaller than `EPS`.
+
+The program also checks that the points do not form a degenerate plane.
+
+If any condition fails, the plane is considered invalid.
+
