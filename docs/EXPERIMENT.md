@@ -8,7 +8,7 @@ The main volume was `data/MRHead_1.nrrd`, a 3D Slicer MRI head sample with `int1
 The program ran in a Linux environment with Python 3, NumPy, imageio, and FFmpeg. Three input sets were used:
 
 1. `planes_demo.csv`: five valid planes.
-2. `planes_instructor.csv`: the instructor's plane list.
+2. `planes_given.csv`: the instructor's plane list.
 3. `planes_invalid_demo.csv`: a mix of valid and invalid planes.
 
 ## 2. Run 1: Demo Planes
@@ -27,9 +27,9 @@ The command created `results/demo.mp4` with five frames. The video uses H.264 en
 
 The axis-aligned frames exactly match the corresponding slices from `M` in the unit tests. This confirms that the axes, image orientation, rows, and columns are handled correctly. Smaller images are centered on a black background, and all frames use the same grayscale range.
 
-## 3. Run 2: Instructor CSV
+## 3. Run 2: Given CSV
 
-The instructor's CSV produced a four-frame video named `results/instructor.mp4`. Each frame is `400 × 504` pixels.
+The instructor's CSV produced a four-frame video named `results/given_csv.mp4`. Each frame is `400 × 504` pixels.
 
 Rows 1, 2, and 4 are valid. Most of these planes fall outside the `256 × 256 × 130` MRHead volume. Those outside parts are black, as required because their voxel value is zero.
 
