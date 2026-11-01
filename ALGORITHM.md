@@ -96,3 +96,25 @@ The program also checks that the points do not form a degenerate plane.
 
 If any condition fails, the plane is considered invalid.
 
+## 4. Calculating the Projection
+
+After validating the plane, the program calculates the size of the output image and the direction of movement along the plane.
+
+### 4.1 Calculating Distances
+
+The program calculates:
+
+- `Dab`: Distance from `a1` to `b`.
+- `Dac`: Distance from `a2` to `c`.
+- `Dbc`: Distance from `b` to `c`.
+
+The number of rows is:
+
+`rows = ceil(Dab)`
+
+The number of columns is:
+
+`cols = ceil(Dbc)`
+
+The `ceil` function rounds the value up to the next integer.
+
