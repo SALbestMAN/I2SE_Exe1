@@ -131,3 +131,23 @@ A unit vector has a length of 1, so it moves exactly one unit at a time.
 
 These vectors determine how the two sides of the plane move when generating each row of the image.
 
+## 5. Generating the 2D Image
+
+The main projection function is called `project()`.
+
+It creates an empty 2D image called `E`, with the calculated number of rows and columns.
+
+The image is initially filled with zeros.
+
+### 5.1 Processing Each Row
+
+For each row `y`, the program moves both starting points forward along their direction vectors.
+
+The new points are calculated as follows:
+
+`A1 = a1 + (y + 1) * step1`
+
+`A2 = a2 + (y + 1) * step2`
+
+These points define the beginning and end of the current row.
+
