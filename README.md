@@ -59,3 +59,13 @@ The program generates an MP4 video containing one frame for each plane defined i
 - The code should be clear and organized.
 - The system should handle invalid inputs properly.
 
+## 6. How to Run
+
+Run the program using the following command:
+
+```bash
+python Ex0.py file.nrrd file.csv file.mp4
+```
+
+Replace the filenames with the paths to your input and output files.
+
