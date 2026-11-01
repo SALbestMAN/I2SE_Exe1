@@ -71,7 +71,7 @@ def plane_geometry(plane):
     if abs(length_a1_to_b - length_a2_to_c) >= EPSILON:
         difference = abs(length_a1_to_b - length_a2_to_c)
         raise InvalidPlaneError(
-            "|dist(a1,b) - dist(a2,c)| = %.4f is not < EPS (%g): not isosceles"
+            "|dist(a1,b) - dist(a2,c)| = %.4f is not < EPSILON (%g): not isosceles"
             % (difference, EPSILON)
         )
 

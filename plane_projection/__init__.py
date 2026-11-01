@@ -16,7 +16,7 @@ from plane_projection.video import write_video
 from plane_projection.volume import Volume
 
 __all__ = [
-    "EPS",
+    "EPSILON",
     "InvalidPlaneError",
     "MAX_SIDE",
     "Plane",
