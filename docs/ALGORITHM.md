@@ -1,75 +1,53 @@
-# Algorithm Description
-## 3D Volume Plane Projection
+# Main Algorithm
+## Projecting a Plane from a 3D Volume
 
-## 1. Overview
+## 1. Checking Plane Points
 
-The program reads a 3D volume from an NRRD file and plane points from a CSV file.
+The program checks the input points before it creates an image. The allowed distance tolerance is `EPS = 0.001`. If the points do not meet the rules, the program raises `InvalidPlaneError`. It does not change the points to make them valid.
 
-For each plane, it samples values from the 3D volume and arranges them into a 2D grayscale image. It then combines the images into an MP4 video in the same order as the CSV rows.
+### Plane with 3 Points
 
-## 2. Reading the Input Files
-
-### 2.1 Reading the NRRD File
-
-The program reads the NRRD file and stores its values in a NumPy array called `M`.
-
-The array has three dimensions, with shape `(sx, sy, sz)`. Each value in `M` represents one voxel in the 3D volume.
-
-The program checks that the data has exactly three dimensions and that each dimension has a size greater than zero.
-
-### 2.2 Reading the CSV File
-
-The first row of the CSV file is treated as a header. Each row after it describes one plane using either three or four 3D points.
-
-- Three points describe a triangle.
-- Four points describe a trapezoid.
-- Each point has three coordinates: `x`, `y`, and `z`.
-
-The program checks that each row contains the required number of coordinates and that the coordinates are valid finite numbers. An invalid row is kept in its position so the video frame order still matches the CSV row order.
-
-## 3. Checking the Plane Points
-
-Before projecting a plane, the program checks that its points follow the required geometry rules. The allowed tolerance is:
+The points are `a`, `b`, and `c`. The distances from `a` to `b` and from `a` to `c` must be almost equal:
 
 ```text
-EPS = 0.001
+abs(dist(a, b) - dist(a, c)) < EPS
 ```
 
-### 3.1 Plane with Three Points
+The points must not all be on one straight line. Points on one line do not enclose a plane with area.
 
-For points `a`, `b`, and `c`, the two sides from `a` must have almost the same length:
+### Plane with 4 Points
+
+The points are `a1`, `b`, `a2`, and `c`. The program checks that:
+
+- The sides `a1 → b` and `a2 → c` have almost the same length:
+
+  ```text
+  abs(dist(a1, b) - dist(a2, c)) < EPS
+  ```
+
+- The distance from `a1` to `a2` is no greater than the distance from `b` to `c`:
+
+  ```text
+  dist(a1, a2) <= dist(b, c)
+  ```
+
+- All four points lie on one plane. The program chooses the three points that form the largest triangle, then checks that the remaining point is less than `EPS` away from their plane.
+- The points do not all lie on one line.
+
+The three points chosen to define the plane are not always `a1, b, a2`. For example, `a2` may lie on the line segment from `a1` to `b`, while the fourth point makes a valid plane:
 
 ```text
-|dist(a, b) - dist(a, c)| < EPS
+a1 = (0, 0, 0)
+b  = (2, 0, 0)
+a2 = (1, 0, 0)
+c  = (1, 2, 0)
 ```
 
-The points must not all lie on one straight line, because points on a line do not form a plane with area.
+The video program catches an invalid-plane error and puts an error frame at that plane's position. The projection itself does not repair invalid points or change its unit-step rule.
 
-### 3.2 Plane with Four Points
+## 2. Plane Measurements and Image Size
 
-For points `a1`, `b`, `a2`, and `c`, the program checks that:
-
-1. The sides `a1 → b` and `a2 → c` have almost the same length:
-
-   ```text
-   |dist(a1, b) - dist(a2, c)| < EPS
-   ```
-
-2. The distance from `a1` to `a2` is not greater than the distance from `b` to `c`:
-
-   ```text
-   dist(a1, a2) <= dist(b, c)
-   ```
-
-3. All four points lie on the same plane within the tolerance `EPS`.
-
-The program checks the last condition by choosing three points that form the largest triangle, using them to define a plane, and measuring the fourth point's distance from it.
-
-The points must also form a real plane rather than collapsing into one line. If a geometry check fails, the plane is invalid.
-
-## 4. Calculating the Image Dimensions and Directions
-
-The program calculates the relevant side lengths:
+The input points are stored as `a1, b, a2, c`. For a triangle, `a1` and `a2` are the same point `a`.
 
 ```text
 Dab = distance from a1 to b
@@ -77,104 +55,143 @@ Dac = distance from a2 to c
 Dbc = distance from b to c
 ```
 
-It uses these lengths to calculate the image size:
+The two side directions are unit vectors:
+
+```text
+v(ab) = (b - a1) / Dab
+v(ac) = (c - a2) / Dac
+```
+
+A unit vector points in the same direction as a side and has length 1. It lets the program move exactly one unit at a time.
+
+The output image size is:
 
 ```text
 rows = ceil(Dab)
 columns = ceil(Dbc)
 ```
 
-`ceil` rounds a value up to the next whole number. The code subtracts a very small number before rounding to prevent tiny computer precision errors from adding an extra row or column.
-
-The program also calculates a unit direction for each side. A unit direction points along the side and has a length of 1. These directions let the program move one unit at a time when calculating the image rows.
-
-## 5. Creating the 2D Projection
-
-The projection function creates a 2D image with the calculated number of rows and columns. It starts with zero values, so any position that receives no sample remains black.
-
-### 5.1 Finding Each Row
-
-For each row, the program moves one unit along both sides of the plane:
+For row numbers `y = 0, 1, ..., rows - 1`, the row endpoints are:
 
 ```text
-a1 for this row = a1 + (y + 1) × direction_a1_to_b
-a2 for this row = a2 + (y + 1) × direction_a2_to_c
+a1(y) = a1 + (y + 1) × v(ab)
+a2(y) = a2 + (y + 1) × v(ac)
 ```
 
-These two points mark the beginning and end of the row inside the 3D volume.
-
-### 5.2 Sampling Along the Row
-
-The program calculates the distance between the row's endpoints and the direction from the first endpoint to the second.
-
-It then samples points along the row in steps of one unit. For each step, the 3D position is:
+The `+1` means the first row is one unit step from the input points. The distance between the two endpoints is `d12`. The direction from the first endpoint to the second is:
 
 ```text
-position = row start + step number × row direction
+dp = (a2(y) - a1(y)) / d12
 ```
 
-The step number starts at zero and continues up to the whole-number part of the row length.
+For a triangle, `d12` grows from almost zero at the tip to about `Dbc`. For a trapezoid, it starts at `dist(a1, a2)` and grows toward `Dbc`.
 
-### 5.3 Reading a Voxel
+## 3. Projection Steps
 
-A calculated position may have decimal coordinates. The program rounds each coordinate to the nearest integer to find the voxel to read from `M`.
-
-Exact half values are rounded away from zero. For example:
+The output image `E` starts with zeros. The program follows these steps for each row:
 
 ```text
- 2.5 becomes  3
--2.5 becomes -3
+E = zeros(rows, columns)
+
+for each row y from 0 to rows - 1:
+    calculate the row endpoints a1(y) and a2(y)
+    calculate d12 and the direction dp
+
+    for each integer step x1 from 0 through floor(d12):
+        point = a1(y) + x1 × dp
+        voxel_value = M[round(point)] if the voxel is inside M, otherwise 0
+        column = round(Dbc / 2 - d12 / 2 + x1)
+
+        if column is inside the image:
+            E[y][column] = voxel_value
+
+return E
 ```
 
-If the voxel is inside the volume, the program reads its value. If it is outside the volume, its value is treated as zero.
+The formula for `column` centers each row inside the full image width. It uses the exact `Dbc`, not the rounded column count.
 
-### 5.4 Placing the Sample in the Image
+## 4. Details the Assignment Does Not Specify
 
-The program centers each row within the image by calculating its destination column:
+The program uses these rules to make the steps clear and consistent:
+
+- **Voxel selection:** It uses the nearest voxel. Exact half values are rounded away from zero, so `2.5` becomes `3` and `-2.5` becomes `-3`. The scalar and NumPy array versions use the same rule, and tests compare them.
+- **Column placement:** The calculated column is rounded to the nearest integer. Simply converting it to an integer could move a sample by as much as one pixel.
+- **Samples beyond the image:** A sample whose column is outside `0` to `columns - 1` is skipped. This can happen for the final sample of a full-width row.
+- **Small floating-point errors:** The code subtracts `1e-9` before applying `ceil` to a side length. For example, a true length of 7 may be returned as `7.000000000000001`. A direct `ceil` would incorrectly give 8 rows. A difference smaller than `1e-9` is treated as computer rounding noise; the geometry tolerance is much larger (`EPS = 0.001`).
+
+## 5. NumPy Implementation
+
+The simple steps above use a loop for every row and every sample. The implementation uses NumPy to calculate many rows and samples together, which reduces Python-level looping.
+
+For a plane with `row_count` rows and up to `K` samples per row:
+
+| Value | Meaning and shape |
+|---|---|
+| `left_endpoints`, `right_endpoints` | Start and end point for each row; shape `(row_count, 3)`. |
+| `row_lengths` | The `d12` value for each row; shape `(row_count,)`. |
+| `unit_directions` | The `dp` direction for each row; shape `(row_count, 3)`. |
+| `step_numbers` | Sample numbers `0` through `K - 1`; shape `(1, K)`. |
+| `image_columns` | Destination image column for each sample; shape `(row_count, K)`. |
+| `voxel_indices` | Rounded voxel coordinate for one axis at a time; shape `(row_count, K)`. |
+| `valid_samples` | Marks samples that are inside both the image and the volume. |
+
+The implementation combines voxel coordinates into one position in a flattened array:
 
 ```text
-column = round(Dbc / 2 - row_length / 2 + step number)
+flat position = (voxel_x × sy + voxel_y) × sz + voxel_z
 ```
 
-It uses the exact value of `Dbc` in this calculation. If the resulting column is outside the image, that sample is skipped.
+Samples outside the volume receive a safe temporary read position and are then excluded by `valid_samples`; they are not written to the image.
 
-### 5.5 Using NumPy
+The implementation writes invalid samples to one extra temporary image cell. That extra cell is removed before the final image is returned.
 
-The program uses NumPy to calculate many row and sample positions together. This avoids doing every pixel calculation in a separate Python loop and makes the projection faster.
+### Names Used in the Code
 
-The NumPy version follows the same steps as the row-by-row description above. The test suite compares its results with a direct version of those steps.
+| Algorithm name | Name in `Ex1.py` |
+|---|---|
+| `M` | `volume.data` (`volume_data` inside `project`) |
+| `E` | Returned image, reshaped to `row_count × column_count` |
+| `Dab`, `Dbc` | `length_a1_to_b`, `length_b_to_c` (`distance_b_to_c` inside `project`) |
+| `rows`, `columns` | `row_count`, `column_count` |
+| `v(ab)`, `v(ac)` | `direction_a1_to_b`, `direction_a2_to_c` |
+| `a1(y)`, `a2(y)` | `left_endpoints`, `right_endpoints` |
+| `d12`, `dp` | `row_lengths`, `unit_directions` |
+| `x1` | `step_numbers` |
+| `x` | `image_columns` |
+| Volume minimum and maximum | `volume.minimum_value`, `volume.maximum_value` |
+| One CSV row | A `Plane` containing `a1`, `b`, `a2`, and `c` |
 
-## 6. Converting the Projection to Grayscale
+The tests include a direct Python version of the assignment steps called `reference_projection`. The optimized `project` function must produce exactly the same pixel values.
 
-The projected image contains values from the volume. The program converts them to grayscale values from 0 to 255 using the smallest and largest values in the full volume:
+## 6. Processing Cost
 
-```text
-smallest volume value → 0   (black)
-largest volume value  → 255 (white)
-```
+For `rows` image rows and up to `K` samples per row:
 
-It uses the same value range for every frame so that brightness is consistent throughout the video.
+- Projection time is about `O(rows × K)`, which is roughly `O(Dab × Dbc)`.
+- Temporary memory is also about `O(rows × K)`, around 50 bytes per sample for the arrays used by the implementation.
+- Loading the full volume takes `O(sx × sy × sz)` once per run.
 
-## 7. Preparing and Writing the Video
+Each plane side is limited to `MAX_SIDE = 4096`. A volume with dimensions `1023 × 1023 × 1023` has a diagonal of about 1772 voxels.
 
-All video frames must have the same dimensions. The program finds the largest valid projection size and centers each image on a black background of that size.
+## 7. Edge Cases
 
-If a plane is invalid or cannot be projected, the program creates an error frame showing `ERROR` and the plane's number in the CSV. It then continues with the remaining planes.
+| Case | Program behavior |
+|---|---|
+| Plane is partly or fully outside the volume | Samples outside the volume have value 0 and appear black. |
+| The required side lengths are not almost equal | The plane is invalid and raises `InvalidPlaneError`. The video program writes an error frame. |
+| Four-point plane has `dist(a1, a2) > dist(b, c)` | The plane is invalid. Equality is allowed. |
+| Four points do not lie on one plane within `EPS` | The plane is invalid. |
+| Required points coincide, or all points lie on one line | The plane is invalid. |
+| `a1, b, a2` lie on a line, but all four points still define a plane | The plane may be valid; the program chooses the largest triangle to check coplanarity. |
+| A plane side is longer than 4096, or a row is longer than 8192 | The plane is rejected before a very large image is created. |
+| CSV row has a bad number, `NaN`, `inf`, wrong point count, missing coordinates, or extra non-empty values | The row is marked invalid and gets an error frame. Empty padding cells after the required coordinates are allowed. |
+| NRRD axis order | The volume shape is `(sx, sy, sz)` and the program accesses values as `M[x][y][z]`. |
+| NRRD header uses LF or CRLF line endings | Both are supported. Damaged or incomplete data gives a clear error. |
 
-Finally, the program writes the frames to an MP4 video in CSV order.
+## 8. Grayscale Images and Error Frames
 
-## 8. Errors and Boundary Cases
+The program uses the full volume's minimum and maximum values to convert every projection to grayscale from 0 to 255. Using one range keeps brightness consistent between frames.
 
-- Invalid plane points cause that plane to be rejected and represented by an error frame.
-- A CSV row with missing, extra, or invalid values is marked invalid and keeps its place in the video.
-- Samples outside the 3D volume become black pixels.
-- A plane or row that exceeds the allowed size is rejected to prevent an excessively large image.
-- An unreadable or damaged NRRD file produces a clear error message.
+All frames are centered on a black canvas sized for the largest valid plane. If an error frame is needed, the canvas is at least 160 pixels wide and 100 pixels high. Its width and height are made even for the `yuv420p` video format.
 
-## 9. Processing Speed
-
-The program prints the time and processing speed for each plane. This speed measures how quickly the program calculates projections. The `--fps` option controls how quickly frames play in the output video; it does not make the projection calculation faster.
-
-## 10. Final Result
-
-The output is an MP4 video with one frame for each CSV data row. Valid planes produce grayscale projection images. Invalid planes produce error frames. The frame order matches the CSV row order.
+An error frame has a black background, a white border, a diagonal cross, and the text `ERROR` and `PLANE #k`, where `k` is the plane's position in the CSV. The default video playback speed is 1 frame per second so each plane is visible.
