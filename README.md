@@ -76,3 +76,14 @@ Run the tests using:
 python -m unittest discover -s tests -v
 ```
 
+## 8. Project Structure
+
+The project is organized into the following main parts:
+
+- `Ex0.py` – Main program and algorithm implementation.
+- `tests/` – Contains tests for the project.
+- `data/` – Contains input volume files and CSV examples.
+- `results/` – Contains generated output files.
+- `README.md` – Project description and instructions.
+- `requirements.txt` – Project dependencies.
+
