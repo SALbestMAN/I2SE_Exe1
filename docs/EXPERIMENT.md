@@ -35,7 +35,7 @@ Rows 1, 2, and 4 are valid. Most of these planes fall outside the `256 × 256 ×
 
 Row 3 is invalid. Its side lengths differ by `20.5284`, which is not less than `EPS = 0.001`. The program rejects that plane and puts an error frame in position 3. The other frames are unaffected.
 
-![Instructor contact sheet](../results/contact_sheet_instructor.png)
+![The given contact sheet](../results/contact_sheet_given.png)
 
 ## 4. Run 3: Invalid-Input Demo
 
