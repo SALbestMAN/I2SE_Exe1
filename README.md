@@ -170,23 +170,21 @@ For sampling, the program rounds each 3D position to the nearest voxel. Exact ha
 ## 10. Example Results and Performance
 
 - `data/planes_demo.csv` creates five valid projection frames.
-- `data/planes_instructor.csv` creates four frames. Row 3 is invalid under the equal-side rule, so it becomes an error frame.
+- `data/planes_given.csv` creates four frames. Row 3 is invalid under the equal-side rule, so it becomes an error frame.
 - `data/planes_invalid_demo.csv` demonstrates valid projections and error frames for invalid planes and CSV rows.
 
 The videos, contact sheets, and run logs are in `results/`. The experiment report includes images and detailed results: [`docs/EXPERIMENT.md`](docs/EXPERIMENT.md).
 
 In the documented `500³` measurements, typical planes ran at about 75–125 projections per second. A large `706 × 706` plane ran at about 35–46 projections per second. The required 30 fps was met in those measurements. See the experiment report for the test setup and full results.
 
-The implementation was compared with a direct version of the instructor's pseudo-code, and the tested projection images matched pixel for pixel. An independent nearest-neighbor check also found no differing pixels in the tested samples.
 
 ## 11. Additional Material
 
 | Material | Location |
 |---|---|
-| Demo, instructor, invalid-plane, and class videos | `results/` |
+| Demo, given csv, invalid-plane, and class videos | `results/` |
 | Contact sheets and example frames | `results/contact_sheet*.png`, `results/demo_frame_*.png` |
 | Run logs and benchmark details | `results/*_log.txt`, [`docs/EXPERIMENT.md`](docs/EXPERIMENT.md) |
 | Requirements and algorithm | [`docs/SRS.md`](docs/SRS.md), [`docs/ALGORITHM.md`](docs/ALGORITHM.md) |
 | Data set details | [`docs/DATASET.md`](docs/DATASET.md) |
-| Instructor answers | [`docs/Q_AND_A.md`](docs/Q_AND_A.md) |
 | Test plan | [`docs/TESTING.md`](docs/TESTING.md) |
