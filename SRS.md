@@ -44,7 +44,6 @@ The system is a command-line application written in Python.
 
 It receives a 3D volume file and a CSV file containing plane coordinates. It processes the planes and creates an MP4 video as output.
 
-
 ### 2.2 User Classes
 
 The system is intended for:
@@ -52,4 +51,11 @@ The system is intended for:
 - Students who want to process 3D volume data.
 - Users who want to generate 2D plane images from a 3D volume.
 
+### 2.3 Operating Environment
+
+The system runs on a computer with:
+
+- Python installed.
+- The required Python libraries.
+- Access to the input NRRD and CSV files.
 
