@@ -121,7 +121,7 @@ Run all tests from the project folder:
 python3 -m unittest discover -s tests -v
 ```
 
-The full suite contains 48 tests and takes about 7 seconds, including the large-volume performance test. 
+The full suite contains 48 tests and takes about 4 seconds, including the large-volume performance test. 
 
 ## 8. Project Structure
 
