@@ -25,7 +25,7 @@ The command created `results/demo.mp4` with five frames. The video uses H.264 en
 
 ![Demo contact sheet](../results/contact_sheet.png)
 
-The axis-aligned frames exactly match the corresponding slices from `M` in the unit tests. This confirms that the axes, image orientation, rows, and columns are handled correctly. Smaller images are centered on a black background, and all frames use the same grayscale range.
+The axis-aligned frames exactly match the corresponding slices of `volume.data` in the unit tests. This confirms that the axes, image orientation, rows, and columns are handled correctly. Smaller images are centered on a black background, and all frames use the same grayscale range.
 
 ## 3. Run 2: Given CSV
 
@@ -66,11 +66,9 @@ The speed values below are the minimum, median, and maximum projection speeds pe
 | Biscuit cake | 120 | `256 × 256` | 427 / 570 / 751 fps |
 | Swiss roll | 120 | `256 × 256` | 341 / 468 / 600 fps |
 | MRHead (`head.csv`) | 280 | `256 × 256` | 386 / 578 / 1301 fps |
-| Croissant (`500 × 500 × 500`) | 100 | About `500 × 560` | 55 / 82 / 102 fps; second run: 66 / 104 / 125 fps |
 
-The output images match the reference pictures in `data/class_dataset/images/`: onion layers, cake layers, the Swiss-roll spiral, and croissant layers.
+The output images match the reference pictures in `data/class_dataset/images/`: onion layers, cake layers, and the Swiss-roll spiral.
 
-The croissant is the real `500³` data set used for the assignment. Its measured speed always passed the required 30 fps. About half of its planes reached the 100 fps target; those planes are large, at about 280,000 pixels.
 
 ## 6. Additional Performance Measurements
 
@@ -78,7 +76,7 @@ Performance was measured with `tests/test_ex1.py::TestPerformance` and a separat
 
 | Measurement | Result |
 |---|---|
-| MRHead planes | 1.0–3.8 ms per plane (260–1000 fps). Instructor planes of about `400 × 500` pixels took 7–9 ms (105–140 fps). |
+| MRHead planes | 1.0–3.8 ms per plane (260–1000 fps). Planes of the given CSV, about `400 × 500` pixels took 7–9 ms (105–140 fps). |
 | `500³`, oblique plane `721 × 300` | 74–124 fps, usually about 110 fps. |
 | `500³`, full plane `499 × 499` | 77–102 fps, usually about 94 fps. |
 | `500³`, very large plane `706 × 706` (about 500,000 pixels) | 35–46 fps, median 42 fps. |
@@ -87,7 +85,7 @@ Every measurement passed the required minimum of 30 fps, including the largest t
 
 ## 7. Correctness Checks
 
-- The program produced exactly the same pixel values as a direct version of the instructor's pseudo-code. This was checked on 30 random planes and the valid instructor rows.
+- The program produced exactly the same pixel values as a direct version of the assignment's pseudo-code. This was checked on 30 random planes and the valid rows of the given CSV.
 - A separate SciPy nearest-neighbor check (`map_coordinates`, `order=0`) found no different pixels for 25 random MRHead planes, covering 154,985 pixels.
 - FFmpeg tools confirmed that the MP4 files use H.264 and `yuv420p`. The demo videos contained 5, 4, and 8 frames, matching their CSV rows.
 - Decoded video frames differed from the original projection by an average of 0.9–1.7 grayscale levels out of 255. This small difference is caused by H.264 video compression.
