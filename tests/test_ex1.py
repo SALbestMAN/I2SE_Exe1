@@ -190,12 +190,12 @@ class TestCsv(unittest.TestCase):
 
     # =============================================================================
     # EXPLANATION
-    # Checks handling of a UTF-8 marker, blank lines, and the instructor CSV.
+    # Checks handling of a UTF-8 marker, blank lines, and the given CSV.
     # Code follows below.
     # =============================================================================
-    def test_bom_blank_lines_and_instructor_file(self):
+    def test_bom_blank_lines_and_given_file(self):
         self.assertEqual(len(self._load("\ufeff" + self.HDR + "\r\n3,1,1,1,2,2,2,3,3,3,,,\r\n")), 1)
-        pl = quiet(pp.load_planes, os.path.join(ROOT, "data", "planes_instructor.csv"))
+        pl = quiet(pp.load_planes, os.path.join(ROOT, "data", "planes_given.csv"))
         self.assertEqual([p is not None for p in pl], [True] * 4)
 
     # =============================================================================
@@ -418,7 +418,7 @@ class TestDemoCli(unittest.TestCase):
     # Checks that invalid rows still receive frames and do not change the total frame count.
     # Code follows below.
     # =============================================================================
-    def test_instructor_csv_and_bad_rows_keep_frame_count(self):
+    def test_given_csv_and_bad_rows_keep_frame_count(self):
         with tempfile.TemporaryDirectory() as d:
             bad = os.path.join(d, "bad.csv")
             write_file(bad, "hdr\n3,200,200,0,0,200,400,400,200,400,,,\nxx,1\n"
@@ -447,7 +447,7 @@ class TestDemoCli(unittest.TestCase):
 # Measures projection speed on large 500 by 500 by 500 volumes.
 # Code follows below.
 # =============================================================================
-@unittest.skipIf(os.environ.get("EX0_FAST"), "EX0_FAST set")
+@unittest.skipIf(os.environ.get("EX1_FAST"), "EX1_FAST set")
 class TestPerformance(unittest.TestCase):
     # =============================================================================
     # EXPLANATION
@@ -659,23 +659,23 @@ class TestAgainstAssignmentPseudoCode(unittest.TestCase):
 
     # =============================================================================
     # EXPLANATION
-    # Compares both algorithms on the valid instructor-provided planes.
+    # Compares both algorithms on the valid planes of the given CSV.
     # Code follows below.
     # =============================================================================
-    def test_instructor_csv_rows_1_2_4(self):
+    def test_given_csv_rows_1_2_4(self):
         vol = pp.load_nrrd(MRHEAD)
-        pls = quiet(pp.load_planes, os.path.join(ROOT, "data", "planes_instructor.csv"))
+        pls = quiet(pp.load_planes, os.path.join(ROOT, "data", "planes_given.csv"))
         self._compare(vol, [pls[0], pls[1], pls[3]])           # row 3 is deliberately not isosceles
 
     # =============================================================================
     # EXPLANATION
-    # Checks that only the known invalid instructor plane is rejected.
+    # Checks that only the known invalid plane of the given CSV is rejected.
     # Code follows below.
     # =============================================================================
-    def test_instructor_csv_row3_is_the_invalid_one(self):
-        """Row 3 of the instructor's file (|ab|=497.4 vs |ac|=476.9) must be rejected, the others accepted."""
+    def test_given_csv_row3_is_the_invalid_one(self):
+        """Row 3 of the given CSV (|ab|=497.4 vs |ac|=476.9) must be rejected, the others accepted."""
         vol = pp.load_nrrd(MRHEAD)
-        pls = quiet(pp.load_planes, os.path.join(ROOT, "data", "planes_instructor.csv"))
+        pls = quiet(pp.load_planes, os.path.join(ROOT, "data", "planes_given.csv"))
         for k in (0, 1, 3):
             pp.project(vol, pls[k])
         with self.assertRaises(pp.InvalidPlaneError):
@@ -951,8 +951,7 @@ class TestClassDataset(unittest.TestCase):
     """The data set shared by the class (data/class_dataset): every plane of every CSV must be valid
     (the CSV files were written for the lecturer's rules) and must give a non-empty image."""
     CASES = [("onion", "class_dataset/onion.nrrd", 120), ("biscuit_cake", "class_dataset/biscuit_cake.nrrd", 120),
-             ("swiss_roll", "class_dataset/swiss_roll.nrrd", 120), ("croissant", "class_dataset/croissant.nrrd", 100),
-             ("head", "MRHead_1.nrrd", 280)]
+             ("swiss_roll", "class_dataset/swiss_roll.nrrd", 120), ("head", "MRHead_1.nrrd", 280)]
 
     # =============================================================================
     # EXPLANATION
@@ -963,8 +962,6 @@ class TestClassDataset(unittest.TestCase):
         for name, nrrd_file, count in self.CASES:
             with self.subTest(name):
                 path = os.path.join(ROOT, "data", nrrd_file)
-                if not os.path.exists(path):          # croissant.nrrd (63 MB) is not stored in the repository
-                    self.skipTest("%s is missing - copy it from the class folder to data/class_dataset/" % nrrd_file)
                 vol = pp.load_nrrd(path)
                 planes = pp.load_planes(os.path.join(ROOT, "data", "class_dataset", "csv", name + ".csv"))
                 self.assertEqual(len(planes), count)
