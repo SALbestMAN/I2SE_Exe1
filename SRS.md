@@ -175,3 +175,17 @@ An MP4 video is created with one frame for each processed plane, following the C
 | Frame | An image added to the output video. |
 | Video | The final MP4 file. |
 
+### 4.3 Traceability Matrix
+
+| Requirement | Related Function |
+|---|---|
+| FR-01 | Read the NRRD volume. |
+| FR-02 | Read CSV coordinates. |
+| FR-03, FR-04 | Define planes using 3 or 4 points. |
+| FR-05, FR-06, FR-07 | Validate plane conditions. |
+| FR-08, FR-09 | Generate 2D plane images. |
+| FR-10 | Preserve plane order. |
+| FR-11, FR-12 | Create and save the MP4 video. |
+| NFR-01, NFR-05 | Performance testing. |
+| NFR-02 | Volume compatibility testing. |
+| NFR-03, NFR-04 | Code review and correctness testing. |
