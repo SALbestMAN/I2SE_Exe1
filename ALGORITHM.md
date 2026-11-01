@@ -197,3 +197,13 @@ This reduces the amount of Python-level work and improves processing speed.
 
 After all samples are processed, the function returns the completed 2D image.
 
+## 6. Converting the Image to Grayscale
+
+After generating the projection, the program converts its values into grayscale values between 0 and 255.
+
+It uses the minimum and maximum values of the original 3D volume.
+
+Using the same range for all images helps keep the brightness consistent between video frames.
+
+Values outside this range are clipped to the nearest limit.
+
