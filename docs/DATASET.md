@@ -31,7 +31,7 @@ python tools/make_dataset.py
 
 ## 2. CSV Plane Lists
 
-- `data/planes_instructor.csv` contains the instructor's example: two triangles and two trapezoids. Its coordinates go up to 500, so many parts of the planes fall outside the MRHead volume. Row 3, the second triangle, does not meet the equal-side rule: its side lengths are 497.4 and 476.9. It must produce an error frame.
+- `data/planes_given.csv` contains the instructor's example: two triangles and two trapezoids. Its coordinates go up to 500, so many parts of the planes fall outside the MRHead volume. Row 3, the second triangle, does not meet the equal-side rule: its side lengths are 497.4 and 476.9. It must produce an error frame.
 - `data/planes_demo.csv` contains five valid planes inside MRHead: three axis-aligned planes (`z=65`, `y=128`, and `x=128`), one oblique triangle, and one oblique trapezoid.
 - `data/planes_invalid_demo.csv` contains eight rows. It includes valid planes and examples of invalid input: a non-isosceles triangle, a trapezoid where `dist(a1,a2) > dist(b,c)`, four points that are not on one plane, a collinear triangle, and a malformed row that declares five points. A row with more coordinates than its declared point count also has an invalid format.
 
@@ -39,7 +39,7 @@ python tools/make_dataset.py
 
 The class was asked to share one data set. A classmate provided it, and it is stored in `data/class_dataset/`. It includes volumes, one CSV per volume in `csv/`, and reference pictures in `images/`. The file `images/overview.png` shows the expected axial, coronal, sagittal, and oblique views for each volume.
 
-The class folder's `MRHead_1.nrrd` and `lecturer_example.csv` are identical to `data/MRHead_1.nrrd` and `data/planes_instructor.csv`, so duplicate copies are not stored.
+The class folder's `MRHead_1.nrrd` and `lecturer_example.csv` are identical to `data/MRHead_1.nrrd` and `data/planes_given.csv`, so duplicate copies are not stored.
 
 | CSV file | Matching volume | Rows and shape content |
 |---|---|---|
@@ -49,4 +49,3 @@ The class folder's `MRHead_1.nrrd` and `lecturer_example.csv` are identical to `
 
 Every row in these CSV files is valid under the instructor's rules. The `TestClassDataset` tests check this.
 
-The classmate's `edge_cases.csv` is not included. It was written for a `dice.nrrd` file that is not in the shared folder, uses `#` comment lines, and follows different, uncertain plane rules. Its expected results do not match the instructor's Q&A rules.
