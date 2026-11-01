@@ -6,7 +6,7 @@
 from plane_projection.cli import main
 from plane_projection.csv_reader import load_planes
 from plane_projection.errors import InvalidPlaneError
-from plane_projection.geometry import EPS, MAX_SIDE, plane_geometry
+from plane_projection.geometry import EPSILON, MAX_SIDE, plane_geometry
 from plane_projection.imaging import make_error_frame, pad_gray, to_gray
 from plane_projection.nrrd_reader import load_nrrd
 from plane_projection.plane import Plane
