@@ -35,12 +35,6 @@ The tests also run the command-line demo from input files through video creation
 
 ## 3. Running the Tests
 
-Regenerate the synthetic data once if needed:
-
-```text
-python tools/make_dataset.py
-```
-
 Run the full test suite:
 
 ```text
@@ -49,7 +43,6 @@ python -m unittest discover -s tests -v
 
 The complete suite has 48 tests and takes about 7 seconds, including the `500³` performance test.
 
-Set `EX0_FAST=1` to skip the `500³` performance test.
 
 ## 4. Entry and Exit Criteria
 
