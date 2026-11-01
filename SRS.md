@@ -59,3 +59,12 @@ The system runs on a computer with:
 - The required Python libraries.
 - Access to the input NRRD and CSV files.
 
+### 2.4 Design and Implementation Constraints
+
+- The system shall be implemented in Python.
+- The input volume shall be provided in NRRD format.
+- The plane coordinates shall be provided in CSV format.
+- The output shall be an MP4 video.
+- The system shall support volume dimensions where each dimension is at least 1 and smaller than 1024.
+- The volume values shall use unsigned 8-bit, 16-bit, or 32-bit data types.
+
