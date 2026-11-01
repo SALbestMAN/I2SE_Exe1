@@ -77,3 +77,22 @@ The system runs on a computer with:
 
 ---
 
+## 3. Specific Requirements
+
+### 3.1 Functional Requirements
+
+| ID | Requirement |
+|---|---|
+| FR-01 | The system shall receive an NRRD file containing a 3D volume. |
+| FR-02 | The system shall read the plane coordinates from a CSV file. |
+| FR-03 | The system shall support planes defined by 3 points. |
+| FR-04 | The system shall support planes defined by 4 points. |
+| FR-05 | For a plane defined by 3 points (a, b, c), the system shall check that the absolute difference between dist(a,b) and dist(a,c) is smaller than EPS. |
+| FR-06 | For a plane defined by 4 points (a1, a2, b, c), the system shall check the plane conditions defined in the assignment. |
+| FR-07 | The system shall use EPS = 0.001 when checking the distance condition. |
+| FR-08 | The system shall generate a 2D image for each plane. |
+| FR-09 | The system shall set samples outside the 3D volume to zero. |
+| FR-10 | The system shall preserve the order of the planes as they appear in the CSV file. |
+| FR-11 | The system shall combine the generated images into an MP4 video. |
+| FR-12 | The system shall save the video using the output filename provided by the user. |
+
