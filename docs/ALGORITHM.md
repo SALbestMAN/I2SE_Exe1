@@ -138,7 +138,8 @@ For a plane with `row_count` rows and up to `K` samples per row:
 The implementation combines voxel coordinates into one position in a flattened array:
 
 ```text
-flat position = (voxel_x × sy + voxel_y) × sz + voxel_z
+flat position = (voxel_x × size_y + voxel_y) × size_z + voxel_z
+(size_x, size_y, size_z are the three values of volume.shape)
 ```
 
 Samples outside the volume receive a safe temporary read position and are then excluded by `valid_samples`; they are not written to the image.
@@ -169,7 +170,7 @@ For `rows` image rows and up to `K` samples per row:
 
 - Projection time is about `O(rows × K)`, which is roughly `O(Dab × Dbc)`.
 - Temporary memory is also about `O(rows × K)`, around 50 bytes per sample for the arrays used by the implementation.
-- Loading the full volume takes `O(sx × sy × sz)` once per run.
+- Loading the full volume takes time proportional to the number of voxels once per run.
 
 Each plane side is limited to `MAX_SIDE = 4096`. A volume with dimensions `1023 × 1023 × 1023` has a diagonal of about 1772 voxels.
 
@@ -185,7 +186,7 @@ Each plane side is limited to `MAX_SIDE = 4096`. A volume with dimensions `1023 
 | `a1, b, a2` lie on a line, but all four points still define a plane | The plane may be valid; the program chooses the largest triangle to check coplanarity. |
 | A plane side is longer than 4096, or a row is longer than 8192 | The plane is rejected before a very large image is created. |
 | CSV row has a bad number, `NaN`, `inf`, wrong point count, missing coordinates, or extra non-empty values | The row is marked invalid and gets an error frame. Empty padding cells after the required coordinates are allowed. |
-| NRRD axis order | The volume shape is `(sx, sy, sz)` and the program accesses values as `M[x][y][z]`. |
+| NRRD axis order | The volume shape is `volume.shape` = `(size_x, size_y, size_z)` and the program accesses values as `volume.data[x][y][z]`. |
 | NRRD header uses LF or CRLF line endings | Both are supported. Damaged or incomplete data gives a clear error. |
 
 ## 8. Grayscale Images and Error Frames
