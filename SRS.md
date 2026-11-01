@@ -164,3 +164,14 @@ Each frame represents one plane, and the frames follow the order of the CSV file
 
 An MP4 video is created with one frame for each processed plane, following the CSV order.
 
+### 4.2 Data Dictionary
+
+| Data | Description |
+|---|---|
+| Volume | The 3D array containing the input data. |
+| Point | A coordinate used to define a plane. |
+| Plane | A plane defined by 3 or 4 points. |
+| Image | A 2D result generated from a plane. |
+| Frame | An image added to the output video. |
+| Video | The final MP4 file. |
+
