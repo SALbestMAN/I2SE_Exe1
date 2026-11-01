@@ -85,5 +85,3 @@ The assignment does not define every detail. The program uses these decisions:
 The tests in `docs/TESTING.md` must cover every functional and non-functional requirement.
 
 The experiment in `docs/EXPERIMENT.md` demonstrates the command-line run, one frame per CSV row, and error frames for invalid planes.
-
-The instructor's geometry answers are recorded in `docs/Q_AND_A.md`.
