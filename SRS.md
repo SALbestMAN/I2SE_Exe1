@@ -36,3 +36,10 @@ The system is designed to process multiple planes in the order they appear in th
 
 ---
 
+## 2. Overall Description
+
+### 2.1 Product Perspective
+
+The system is a command-line application written in Python.
+
+It receives a 3D volume file and a CSV file containing plane coordinates. It processes the planes and creates an MP4 video as output.
