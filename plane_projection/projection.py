@@ -1,51 +1,118 @@
 # =============================================================================
 # FILE OVERVIEW
-# Contains the main projection algorithm, which samples voxels along the rows of a plane and assembles them into a 2D image.
+# Samples voxel values along a plane and arranges them into a 2D grayscale image.
 # =============================================================================
+
+import math
 
 import numpy as np
 
 from plane_projection.geometry import MAX_SIDE, plane_geometry
-from plane_projection.rounding import round_nearest_array
-
+from plane_projection.rounding import round_nearest
 
 
 # =============================================================================
 # EXPLANATION
-# Projects volume vol onto plane pl. It calculates row endpoints, samples each row in unit steps, rounds 3D positions to voxel coordinates, ignores positions outside the volume, and returns a 2D NumPy image.
+# Projects the 3D volume onto the plane. It walks along each row of the plane, reads the volume value at each point, and stores that value in a 2D image.
 # Code follows below.
 # =============================================================================
-
 def project(vol, pl):
-    step1, step2, rows, cols, dbc = plane_geometry(pl)
-    M = vol.data
+    # Get the directions, image dimensions, and the distance between points b and c.
+    direction_a1_to_b, direction_a2_to_c, rows, columns, distance_b_to_c = (
+        plane_geometry(pl)
+    )
 
-    row_number = np.arange(1, rows + 1, dtype=np.float64)[:, np.newaxis]
-    left_end = np.array(pl.a1, dtype=np.float64) + row_number * np.array(step1)
-    right_end = np.array(pl.a2, dtype=np.float64) + row_number * np.array(step2)
+    volume_data = vol.data
+    volume_shape = vol.shape
 
-    direction = right_end - left_end
-    d12 = np.linalg.norm(direction, axis=1)
-    unit = np.divide(direction, d12[:, np.newaxis], out=np.zeros_like(direction),
-                     where=d12[:, np.newaxis] > 1e-12)
-    last_step = np.floor(d12)
-    if last_step.max() > 2 * MAX_SIDE:
-        raise ValueError("Plane too wide (row length %.0f)" % last_step.max())
-    x1 = np.arange(int(last_step.max()) + 1, dtype=np.float64)[np.newaxis, :]
+    # Start with a black image. Each image position will hold one sampled volume value.
+    image = np.zeros((rows, columns), dtype=volume_data.dtype)
 
-    column = round_nearest_array(dbc / 2.0 - d12[:, np.newaxis] / 2.0 + x1)
-    is_written = (x1 <= last_step[:, np.newaxis]) & (column >= 0) & (column < cols)
+    # Process one image row at a time.
+    for row_index in range(rows):
+        # The original algorithm starts the first row one step after a1 and a2.
+        distance_along_side = row_index + 1
 
-    flat_index = None
-    for axis, size in enumerate(vol.shape):
-        position = left_end[:, axis][:, np.newaxis] + x1 * unit[:, axis][:, np.newaxis]
-        voxel = round_nearest_array(position)
-        is_written &= (voxel >= 0) & (voxel < size)
-        flat_index = voxel if flat_index is None else flat_index * size + voxel
-    values = M.reshape(-1).take(flat_index, mode="clip")
+        # Find the left and right endpoints of this row in 3D space.
+        left_point = [
+            pl.a1[axis]
+            + distance_along_side * direction_a1_to_b[axis]
+            for axis in range(3)
+        ]
+        right_point = [
+            pl.a2[axis]
+            + distance_along_side * direction_a2_to_c[axis]
+            for axis in range(3)
+        ]
 
-    target = np.arange(rows, dtype=np.int64)[:, np.newaxis] * cols + column
-    target[~is_written] = rows * cols
-    image = np.zeros(rows * cols + 1, dtype=M.dtype)
-    image[target] = values
-    return image[:rows * cols].reshape(rows, cols)
+        # Find the direction and length from the left endpoint to the right endpoint.
+        row_direction = [
+            right_point[axis] - left_point[axis]
+            for axis in range(3)
+        ]
+        row_length = math.sqrt(
+            sum(component ** 2 for component in row_direction)
+        )
+
+        # Convert the row direction into a unit direction so each step is one unit long.
+        if row_length > 1e-12:
+            unit_direction = [
+                component / row_length
+                for component in row_direction
+            ]
+        else:
+            # If the row has almost no length, do not move along it.
+            unit_direction = [0.0, 0.0, 0.0]
+
+        # The original algorithm samples whole-number steps up to the row length.
+        last_step = math.floor(row_length)
+
+        if last_step > 2 * MAX_SIDE:
+            raise ValueError(
+                "Plane too wide (row length %.0f)" % row_length
+            )
+
+        # Center this row's samples within the image columns.
+        first_column_offset = (
+            distance_b_to_c / 2.0 - row_length / 2.0
+        )
+
+        # Walk along the row, starting at step zero.
+        for step_number in range(last_step + 1):
+            column_index = round_nearest(
+                first_column_offset + step_number
+            )
+
+            # Skip a sample if its image column is outside the image.
+            if column_index < 0 or column_index >= columns:
+                continue
+
+            # Find this sample's 3D position.
+            position = [
+                left_point[axis]
+                + step_number * unit_direction[axis]
+                for axis in range(3)
+            ]
+
+            # Convert the 3D position to integer voxel coordinates.
+            voxel = [
+                round_nearest(position[axis])
+                for axis in range(3)
+            ]
+
+            # Skip the sample if any coordinate is outside the volume.
+            inside_volume = all(
+                0 <= voxel[axis] < volume_shape[axis]
+                for axis in range(3)
+            )
+            if not inside_volume:
+                continue
+
+            # Read the volume value and place it in the corresponding image pixel.
+            image[row_index, column_index] = volume_data[
+                voxel[0],
+                voxel[1],
+                voxel[2],
+            ]
+
+    return image
