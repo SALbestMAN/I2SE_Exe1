@@ -1,5 +1,4 @@
 # Software Requirements Specification
-## Ex1: 3D Volume Plane Projection
 
 ## 1. Introduction
 
