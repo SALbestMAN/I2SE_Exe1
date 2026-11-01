@@ -238,3 +238,12 @@ When a plane is invalid, the program writes an error frame for that plane and co
 
 This ensures that one invalid plane does not stop the entire video from being generated.
 
+## 9. Final Result
+
+At the end of the process, the program creates an MP4 video.
+
+Each frame represents the projection of one plane from the 3D volume.
+
+Valid planes produce grayscale images, while invalid planes produce error frames.
+
+The frames appear in the same order as the rows in the CSV file.
