@@ -96,3 +96,19 @@ The system runs on a computer with:
 | FR-11 | The system shall combine the generated images into an MP4 video. |
 | FR-12 | The system shall save the video using the output filename provided by the user. |
 
+### 3.2 External Interface Requirements
+
+#### 3.2.1 Command-Line Interface
+
+The system shall be executed using the following command format:
+
+```bash
+python Ex0.py file.nrrd file.csv file.mp4
+```
+
+The command receives:
+
+- `file.nrrd`: The input 3D volume.
+- `file.csv`: The plane coordinates.
+- `file.mp4`: The output video filename.
+
