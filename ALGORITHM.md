@@ -187,3 +187,13 @@ If the sample is outside the volume, its value remains zero.
 
 This allows the algorithm to process planes that are partly or completely outside the volume.
 
+### 5.5 Optimizing the Projection
+
+The projection is implemented using NumPy vectorized operations.
+
+Instead of using Python loops for every pixel, the program calculates many sample positions and their indices together.
+
+This reduces the amount of Python-level work and improves processing speed.
+
+After all samples are processed, the function returns the completed 2D image.
+
