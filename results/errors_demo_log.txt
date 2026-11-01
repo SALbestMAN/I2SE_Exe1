@@ -1,0 +1,12 @@
+NRRD: data/MRHead_1.nrrd
+CSV : data/planes_invalid_demo.csv
+Volume (256, 256, 130)
+[warn] CSV line 8 is invalid - error frame written
+plane 1: 255x255  (3.6 ms, 276.0 fps)
+[warn] plane 2: |dist(a1,b) - dist(a2,c)| = 5.0290 is not < EPS (0.001): not isosceles - error frame written
+plane 3: 90x263  (1.0 ms, 975.2 fps)
+[warn] plane 4: dist(a1,a2) = 200.0000 exceeds dist(b,c) = 180.0000 - error frame written
+[warn] plane 5: the 4 points are not on one plane (one point is 62.4695 off the plane of the other three) - error frame written
+[warn] plane 6: degenerate plane (a, b, c are collinear) - error frame written
+plane 8: 180x187  (1.3 ms, 799.3 fps)
+Wrote 8 frame(s) (3 valid, 5 error), 256x264 -> results/errors_demo.mp4

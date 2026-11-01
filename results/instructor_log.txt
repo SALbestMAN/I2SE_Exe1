@@ -1,0 +1,8 @@
+NRRD: data/MRHead_1.nrrd
+CSV : data/planes_instructor.csv
+Volume (256, 256, 130)
+plane 1: 400x448  (8.7 ms, 115.5 fps)
+plane 2: 400x500  (6.7 ms, 149.7 fps)
+[warn] plane 3: |dist(a1,b) - dist(a2,c)| = 20.5284 is not < EPS (0.001): not isosceles - error frame written
+plane 4: 400x503  (8.1 ms, 123.1 fps)
+Wrote 4 frame(s) (3 valid, 1 error), 400x504 -> results/instructor.mp4

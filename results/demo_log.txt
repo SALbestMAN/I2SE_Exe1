@@ -1,0 +1,9 @@
+NRRD: data/MRHead_1.nrrd
+CSV : data/planes_demo.csv
+Volume (256, 256, 130)
+plane 1: 255x255  (3.8 ms, 262.5 fps)
+plane 2: 255x129  (1.0 ms, 970.5 fps)
+plane 3: 255x129  (0.9 ms, 1144.8 fps)
+plane 4: 180x187  (1.1 ms, 946.5 fps)
+plane 5: 90x263  (0.8 ms, 1203.9 fps)
+Wrote 5 frame(s) (5 valid, 0 error), 256x264 -> results/demo.mp4
