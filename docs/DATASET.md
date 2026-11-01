@@ -14,13 +14,12 @@
 | `data/class_dataset/onion.nrrd` | `uint8` | gzip | little-endian | `256 × 256 × 130` | Shared class data: onion with concentric layers. |
 | `data/class_dataset/biscuit_cake.nrrd` | `uint16` | gzip | little-endian | `256 × 256 × 130` | Shared class data: layered biscuit cake. |
 | `data/class_dataset/swiss_roll.nrrd` | `uint32` | gzip | little-endian | `256 × 256 × 130` | Shared class data: Swiss roll with a spiral shape. |
-| `data/class_dataset/croissant.nrrd` | `uint8` | gzip | little-endian | `500 × 500 × 500` | Shared class data: croissant; the real 500³ test volume. It is not in the repository because it is 63 MB. Copy it from the class folder into `data/class_dataset/`. |
 | Created by performance tests | `uint8`, `uint16`, or `uint32` | — | — | `500 × 500 × 500` | Made when needed for performance tests; not stored because each volume needs at least 125 MB. |
 
 The synthetic files whose names start with `index_` store a unique value for each voxel:
 
 ```text
-M[x, y, z] = x + sx × y + sx × sy × z
+volume.data[x, y, z] = x + shape[0] × y + shape[0] × shape[1] × z
 ```
 
 Because every voxel has a predictable value, tests can tell exactly which voxel supplied each pixel. Regenerate these files with:
@@ -44,7 +43,6 @@ The class folder's `MRHead_1.nrrd` and `lecturer_example.csv` are identical to `
 | CSV file | Matching volume | Rows and shape content |
 |---|---|---|
 | `csv/onion.csv`, `csv/biscuit_cake.csv`, `csv/swiss_roll.csv` | Volume with the same name | 120 rows each; all trapezoids. The planes tilt through the volume. Corners range from -47 to 302 in x/y and from -63 to 192 in z, so some points are outside the `256 × 256 × 130` volume. |
-| `csv/croissant.csv` | `croissant.nrrd` | 100 rows; all triangles. Corners range from about -100 to 600, so many planes extend outside the `500³` volume. |
 | `csv/head.csv` | `data/MRHead_1.nrrd` | 280 rows: 220 trapezoids and 60 triangles. It starts with consecutive axial slices (`z = 0, 1, 2, ...`), then includes tilted trapezoids and triangles. |
 
 Every row in these CSV files is valid under the instructor's rules. The `TestClassDataset` tests check this.
