@@ -151,3 +151,17 @@ The new points are calculated as follows:
 
 These points define the beginning and end of the current row.
 
+### 5.2 Sampling Between the Two Points
+
+The program calculates the distance between `A1` and `A2`.
+
+It then calculates a unit direction vector from `A1` to `A2`.
+
+Starting from `A1`, the program samples points along this direction in steps of one unit.
+
+The sample positions are:
+
+`P = A1 + x1 * dp`
+
+where `x1` starts at zero and increases by one until it reaches the last allowed sample.
+
