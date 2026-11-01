@@ -177,3 +177,13 @@ This calculation centers the samples within the row.
 
 The program uses the nearest integer when converting coordinates to voxel indices.
 
+### 5.4 Checking Volume Boundaries
+
+Before reading a value from the 3D volume, the program checks whether the sampled voxel is inside the volume boundaries.
+
+If the sample is inside the volume, its value is copied into the corresponding position in the output image.
+
+If the sample is outside the volume, its value remains zero.
+
+This allows the algorithm to process planes that are partly or completely outside the volume.
+
