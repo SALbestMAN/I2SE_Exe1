@@ -42,8 +42,3 @@ python -m unittest discover -s tests -v
 ```
 
 The complete suite has 48 tests and takes about 7 seconds, including the `500³` performance test.
-
-
-## 4. Entry and Exit Criteria
-
-Every commit that changes `Ex1.py` must keep the test suite passing. Before a release or submission, all tests must pass and the experiment must be run again to regenerate `results/demo.mp4`.
