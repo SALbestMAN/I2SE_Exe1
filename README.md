@@ -69,3 +69,15 @@ python Ex0.py file.nrrd file.csv file.mp4
 
 Replace the filenames with the paths to your input and output files.
 
+## 7. Running Tests
+
+Tests are used to check the correctness of the algorithm and verify that the system handles different inputs and situations.
+
+Run the tests using:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+
+Changes should be tested before they are committed to the repository.
