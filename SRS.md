@@ -68,3 +68,12 @@ The system runs on a computer with:
 - The system shall support volume dimensions where each dimension is at least 1 and smaller than 1024.
 - The volume values shall use unsigned 8-bit, 16-bit, or 32-bit data types.
 
+### 2.5 Assumptions and Dependencies
+
+- The user provides the input files.
+- The CSV file contains the coordinates required to define the planes.
+- The required Python libraries are installed before running the program.
+- The plane coordinates are interpreted according to the format defined in the assignment.
+
+---
+
