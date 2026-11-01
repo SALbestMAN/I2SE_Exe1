@@ -41,6 +41,21 @@ The program generates an MP4 video containing one frame for each plane defined i
 
 
 
-## 11. License
+## 5. Requirements
 
-No license has been specified for this project.
+### Functional Requirements
+
+- The system shall read 3D volume data from an NRRD file.
+- The system shall read plane coordinates from a CSV file.
+- The system shall support planes defined by 3 or 4 points.
+- The system shall generate a 2D image for each valid plane.
+- The system shall set samples outside the volume to zero.
+- The system shall create an MP4 video from the generated images.
+
+### Non-Functional Requirements
+
+- The algorithm should be efficient.
+- The system should handle different volume dimensions.
+- The code should be clear and organized.
+- The system should handle invalid inputs properly.
+
