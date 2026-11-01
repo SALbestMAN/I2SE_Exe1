@@ -1,5 +1,5 @@
 NRRD: data/MRHead_1.nrrd
-CSV : data/planes_instructor.csv
+CSV : data/planes_given.csv
 Volume (256, 256, 130)
 plane 1: 400x448  (8.7 ms, 115.5 fps)
 plane 2: 400x500  (6.7 ms, 149.7 fps)
