@@ -128,3 +128,15 @@ The system creates an MP4 video.
 
 Each frame represents one plane, and the frames follow the order of the CSV file.
 
+### 3.3 Non-Functional Requirements
+
+| ID | Requirement |
+|---|---|
+| NFR-01 | The system shall process the input volume efficiently. |
+| NFR-02 | The system shall support the volume dimensions and data types specified in the assignment. |
+| NFR-03 | The implementation shall be organized into clear and understandable functions. |
+| NFR-04 | The system shall produce consistent results for the same input files. |
+| NFR-05 | The system shall meet the performance requirements specified in the project assignment. |
+
+---
+
