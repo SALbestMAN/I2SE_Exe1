@@ -1,4 +1,3 @@
-# Ex1-Algorithm-Implementing-a-plane-projection-of-3D-volume
 # 3D Volume Plane Projection
 
 ## 1. Project Overview
@@ -39,8 +38,6 @@ The program receives three files:
 
 The program generates an MP4 video containing one frame for each plane defined in the CSV file. The frames follow the same order as the planes in the CSV file.
 
-
-
 ## 5. Requirements
 
 ### Functional Requirements
@@ -79,5 +76,3 @@ Run the tests using:
 python -m unittest discover -s tests -v
 ```
 
-
-Changes should be tested before they are committed to the repository.
