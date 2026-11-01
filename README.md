@@ -123,8 +123,8 @@ The full suite contains 48 tests and takes about 7 seconds, including the large-
 
 | Path | Contents |
 |---|---|
-| `Ex1.py` | Command-line entry point for running the program. |
-| `plane_projection/` | Program modules for NRRD and CSV reading, geometry checks, projection, image processing, and video writing. |
+| `Ex1.py` | The whole program in one file: NRRD and CSV reading, plane checks, projection, image processing, video writing, and the command-line demo. |
+| `tools/make_dataset.py` | Creates the synthetic NRRD files in `data/synthetic/`. |
 | `tests/` | Automated tests for the program. |
 | `data/` | MRI volume, example CSV files, synthetic NRRD files, and the shared class data set. |
 | `results/` | Generated videos, contact sheets, example frames, and run logs. |
