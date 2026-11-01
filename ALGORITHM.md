@@ -118,3 +118,16 @@ The number of columns is:
 
 The `ceil` function rounds the value up to the next integer.
 
+### 4.2 Calculating Direction Vectors
+
+The program calculates two direction vectors:
+
+- From `a1` towards `b`.
+- From `a2` towards `c`.
+
+Each vector is divided by its length to create a unit vector.
+
+A unit vector has a length of 1, so it moves exactly one unit at a time.
+
+These vectors determine how the two sides of the plane move when generating each row of the image.
+
