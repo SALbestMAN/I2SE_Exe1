@@ -607,7 +607,7 @@ def find_in_project(extensions, file_description):
     if not matching_files:
         sys.exit(
             "No %s file found in the project folder:\n  %s\n"
-            "Put it there, or run: python Ex0.py file.nrrd file.csv file.mp4"
+            "Put it there, or run: python Ex1.py file.nrrd file.csv file.mp4"
             % (file_description, project_folder)
         )
 
