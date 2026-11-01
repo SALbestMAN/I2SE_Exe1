@@ -140,3 +140,27 @@ Each frame represents one plane, and the frames follow the order of the CSV file
 
 ---
 
+## 4. Appendices
+
+### 4.1 Use Case: Generate a Plane Projection Video
+
+**Actor:** User
+
+**Preconditions:**
+- The required input files are available.
+- Python and the required libraries are installed.
+
+**Main Steps:**
+1. The user runs the program.
+2. The user provides the NRRD file, CSV file, and output MP4 filename.
+3. The system reads the 3D volume.
+4. The system reads the plane coordinates.
+5. The system processes each plane.
+6. The system generates a 2D image for each plane.
+7. The system combines the images into an MP4 video.
+8. The system saves the output video.
+
+**Expected Result:**
+
+An MP4 video is created with one frame for each processed plane, following the CSV order.
+
