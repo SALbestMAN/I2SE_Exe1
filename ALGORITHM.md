@@ -207,3 +207,19 @@ Using the same range for all images helps keep the brightness consistent between
 
 Values outside this range are clipped to the nearest limit.
 
+## 7. Creating the Video
+
+After processing all planes, the program prepares the images for the video.
+
+All frames must have the same dimensions.
+
+The program finds the largest valid image size and creates a black background with that size.
+
+Each generated image is placed in the center of the background.
+
+If a plane is invalid or its projection cannot be generated, the program creates an error frame instead. This frame contains the word `ERROR` and the plane number.
+
+Finally, the program combines all frames into an MP4 video using the `imageio` library and the H.264 codec.
+
+The video keeps the same order as the original CSV rows.
+
