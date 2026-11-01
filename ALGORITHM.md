@@ -40,3 +40,30 @@ It also checks that each row contains the correct number of values and that all 
 
 If a row is invalid, the program marks it as invalid and continues reading the other rows.
 
+## 3. Plane Validation
+
+Before generating an image, the program checks whether the given points define a valid plane.
+
+The tolerance value is:
+
+`EPS = 0.001`
+
+### 3.1 Plane Defined by 3 Points
+
+The three points are:
+
+- `a`
+- `b`
+- `c`
+
+The program calculates the distances:
+
+- `Dab`: Distance between a and b.
+- `Dac`: Distance between a and c.
+
+The plane is valid if:
+
+`|Dab - Dac| < EPS`
+
+The program also checks that the three points are not on the same straight line.
+
