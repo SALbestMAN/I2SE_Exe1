@@ -29,3 +29,10 @@ The system is designed to process multiple planes in the order they appear in th
 | Frame | One 2D image in the output video. |
 | EPS | A small tolerance value used when checking distances. |
 
+### 1.4 References
+
+- Project assignment: Ex1 – Algorithm: Implementing a Plane Projection of 3D Volume.
+- Course documentation guidelines.
+
+---
+
