@@ -112,3 +112,13 @@ The command receives:
 - `file.csv`: The plane coordinates.
 - `file.mp4`: The output video filename.
 
+#### 3.2.2 Input Interface
+
+**NRRD File**
+
+The system receives a 3D volume stored in an NRRD file.
+
+**CSV File**
+
+The system receives the coordinates of the points used to define the planes.
+
