@@ -25,3 +25,18 @@ The volume has three dimensions:
 
 The program checks that the volume has exactly three dimensions and that all dimensions have positive sizes.
 
+### 2.2 Reading the CSV File
+
+Next, the program reads the CSV file.
+
+Each data row contains either 3 or 4 points. Each point has three coordinates: X, Y, and Z.
+
+- **3 points:** Define an isosceles triangle.
+- **4 points:** Define an isosceles trapezoid.
+
+The program skips the CSV header and reads the remaining rows.
+
+It also checks that each row contains the correct number of values and that all coordinates are valid numbers.
+
+If a row is invalid, the program marks it as invalid and continues reading the other rows.
+
