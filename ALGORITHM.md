@@ -223,3 +223,18 @@ Finally, the program combines all frames into an MP4 video using the `imageio` l
 
 The video keeps the same order as the original CSV rows.
 
+## 8. Error Handling
+
+The program handles several types of errors:
+
+- Invalid or unreadable NRRD files.
+- Invalid CSV rows.
+- Invalid plane geometry.
+- Planes that are too large.
+- Samples outside the volume boundaries.
+- Missing input files or required libraries.
+
+When a plane is invalid, the program writes an error frame for that plane and continues processing the remaining planes.
+
+This ensures that one invalid plane does not stop the entire video from being generated.
+
