@@ -24,3 +24,23 @@ The system will:
 - Sample the 3D volume to generate a 2D image for each plane.
 - Handle points or samples that are outside the volume.
 - Combine the generated images into an MP4 video.
+
+## 4. Input and Output
+
+### Input
+
+The program receives three files:
+
+- **NRRD file:** Contains the 3D volume data.
+- **CSV file:** Contains the coordinates of the points used to define the planes.
+- **MP4 file:** The output video filename.
+
+### Output
+
+The program generates an MP4 video containing one frame for each plane defined in the CSV file. The frames follow the same order as the planes in the CSV file.
+
+
+
+## 11. License
+
+No license has been specified for this project.
