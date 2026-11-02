@@ -1,4 +1,5 @@
 # Software Requirements Specification
+## Ex1: 3D Volume Plane Projection
 
 ## 1. Introduction
 
@@ -55,7 +56,7 @@ The assignment does not define every detail. The program uses these decisions:
 | FR-1 | The program must start as `python Ex1.py <file.nrrd> <file.csv> <file.mp4>`. It may also accept `--fps`. |
 | FR-2 | The program must read a 3D NRRD volume with supported 8-, 16-, or 32-bit unsigned values, as well as signed, 64-bit, and floating-point values. It must support raw and gzip encoding, little- and big-endian data, and LF or CRLF header lines. |
 | FR-3 | The CSV must have a header row, then one plane per data row. A row starts with a point count of exactly 3 or 4 and has three finite coordinates per point. Missing coordinates, empty cells among required values, and extra non-empty values make the row invalid. Empty padding cells after the required values are allowed. |
-| FR-4 | For each valid plane, the program must follow the assignment algorithm: move `a1` and `a2` one unit per row, sample integer steps `step_numbers = 0..floor(row_length)` from `a1` to `a2`, and calculate the destination column as `image_column = length_b_to_c/2 - row_length/2 + step_number`. Use the exact `length_b_to_c`, round the column to the nearest integer, and use zero for samples outside `volume`. |
+| FR-4 | For each valid plane, the program must follow the assignment algorithm: move `a1` and `a2` one unit per row, sample the integer `step_numbers` from `0` through `floor(row_lengths)` from `a1` to `a2`, and calculate the destination column as `image_columns = distance_b_to_c/2 - row_lengths/2 + step_numbers`. Use the exact `distance_b_to_c`, round the column to the nearest integer, and use zero for samples outside `volume`. |
 | FR-5 | A sample outside the volume must have value 0. |
 | FR-6 | The output video must contain exactly one frame per CSV data row, in the same order. |
 | FR-7 | A valid 3-point plane must satisfy `abs(dist(a,b) - dist(a,c)) < EPS`. A valid 4-point plane must satisfy `abs(dist(a1,b) - dist(a2,c)) < EPS`, `dist(a1,a2) <= dist(b,c)`, and all four points must lie on one plane. For the last check, the fourth point must be within `EPS` of the plane made by the best group of three points. Coincident points and points all on one line are invalid. |
