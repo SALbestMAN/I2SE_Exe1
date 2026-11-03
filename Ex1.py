@@ -89,8 +89,7 @@ def load_planes(file_path):
             planes.append(_parse_plane(cleaned_cells))
         except ValueError:
             print(
-                "[warn] CSV line %d is invalid - error frame written"
-                % line_number,
+                "[warn] CSV line %d is invalid - error frame written" % line_number,
                 file=sys.stderr,
             )
             planes.append(None)
@@ -128,8 +127,7 @@ def _parse_plane(cells):
         raise ValueError("coordinates must be finite numbers")
 
     points = [
-        tuple(coordinates[index:index + 3])
-        for index in range(0, len(coordinates), 3)
+        tuple(coordinates[index : index + 3]) for index in range(0, len(coordinates), 3)
     ]
 
     if point_count == 3:
@@ -165,10 +163,7 @@ def _round_array_nearest(values):
     rounded_values = np.floor(values + 0.5)
 
     if values.min() < 0:
-        negative_half_values = (
-            (values < 0)
-            & (rounded_values == values + 0.5)
-        )
+        negative_half_values = (values < 0) & (rounded_values == values + 0.5)
         rounded_values -= negative_half_values
 
     return rounded_values.astype(np.int64)
@@ -189,10 +184,7 @@ class InvalidPlaneError(ValueError):
 # Code follows below.
 # =============================================================================
 def _vector_between(point_a, point_b):
-    return [
-        point_b[axis] - point_a[axis]
-        for axis in range(3)
-    ]
+    return [point_b[axis] - point_a[axis] for axis in range(3)]
 
 
 # =============================================================================
@@ -201,9 +193,7 @@ def _vector_between(point_a, point_b):
 # Code follows below.
 # =============================================================================
 def _vector_length(vector):
-    return math.sqrt(
-        sum(component * component for component in vector)
-    )
+    return math.sqrt(sum(component * component for component in vector))
 
 
 # =============================================================================
@@ -231,9 +221,7 @@ def _plane_geometry(plane):
     length_a1_to_b = math.dist(plane.a1, plane.b)
     length_a2_to_c = math.dist(plane.a2, plane.c)
     length_b_to_c = math.dist(plane.b, plane.c)
-    length_a1_to_a2 = _vector_length(
-        _vector_between(plane.a1, plane.a2)
-    )
+    length_a1_to_a2 = _vector_length(_vector_between(plane.a1, plane.a2))
 
     if min(length_a1_to_b, length_a2_to_c, length_b_to_c) <= 1e-12:
         raise InvalidPlaneError("degenerate plane (coincident points)")
@@ -264,30 +252,19 @@ def _plane_geometry(plane):
     else:
         normal_vector = _cross_product(side_a1_to_b, side_a2_to_c)
 
-        if _vector_length(normal_vector) <= (
-            1e-9 * length_a1_to_b * length_a2_to_c
-        ):
-            raise InvalidPlaneError(
-                "degenerate plane (a, b, c are collinear)"
-            )
+        if _vector_length(normal_vector) <= (1e-9 * length_a1_to_b * length_a2_to_c):
+            raise InvalidPlaneError("degenerate plane (a, b, c are collinear)")
 
     row_count = math.ceil(length_a1_to_b - 1e-9)
     column_count = math.ceil(length_b_to_c - 1e-9)
 
     if row_count > MAX_SIDE or column_count > MAX_SIDE:
         raise ValueError(
-            "Plane too large (%dx%d, limit %d)"
-            % (row_count, column_count, MAX_SIDE)
+            "Plane too large (%dx%d, limit %d)" % (row_count, column_count, MAX_SIDE)
         )
 
-    direction_a1_to_b = [
-        component / length_a1_to_b
-        for component in side_a1_to_b
-    ]
-    direction_a2_to_c = [
-        component / length_a2_to_c
-        for component in side_a2_to_c
-    ]
+    direction_a1_to_b = [component / length_a1_to_b for component in side_a1_to_b]
+    direction_a2_to_c = [component / length_a2_to_c for component in side_a2_to_c]
 
     return (
         direction_a1_to_b,
@@ -318,7 +295,12 @@ def _check_four_points_on_one_plane(plane, longest_side):
     origin_point_index = None
     remaining_point_index = None
 
-    for first_index, second_index, third_index, remaining_index in possible_point_groups:
+    for (
+        first_index,
+        second_index,
+        third_index,
+        remaining_index,
+    ) in possible_point_groups:
         vector_1 = _vector_between(points[first_index], points[second_index])
         vector_2 = _vector_between(points[first_index], points[third_index])
         normal_vector = _cross_product(vector_1, vector_2)
@@ -330,28 +312,28 @@ def _check_four_points_on_one_plane(plane, longest_side):
             origin_point_index = first_index
             remaining_point_index = remaining_index
 
-    if largest_normal_length <= 1e-9 * longest_side ** 2:
-        raise InvalidPlaneError(
-            "degenerate plane (all 4 points are collinear)"
-        )
+    if largest_normal_length <= 1e-9 * longest_side**2:
+        raise InvalidPlaneError("degenerate plane (all 4 points are collinear)")
 
     vector_to_remaining_point = _vector_between(
         points[origin_point_index],
         points[remaining_point_index],
     )
 
-    distance_from_plane = abs(
-        sum(
-            largest_normal[axis] * vector_to_remaining_point[axis]
-            for axis in range(3)
+    distance_from_plane = (
+        abs(
+            sum(
+                largest_normal[axis] * vector_to_remaining_point[axis]
+                for axis in range(3)
+            )
         )
-    ) / largest_normal_length
+        / largest_normal_length
+    )
 
     if distance_from_plane >= EPS:
         raise InvalidPlaneError(
             "the 4 points are not on one plane "
-            "(one point is %.4f off the plane of the other three)"
-            % distance_from_plane
+            "(one point is %.4f off the plane of the other three)" % distance_from_plane
         )
 
 
@@ -377,13 +359,11 @@ def project(volume, plane):
         dtype=np.float64,
     )[:, np.newaxis]
 
-    left_endpoints = (
-        np.array(plane.a1, dtype=np.float64)
-        + row_numbers * np.array(direction_a1_to_b)
+    left_endpoints = np.array(plane.a1, dtype=np.float64) + row_numbers * np.array(
+        direction_a1_to_b
     )
-    right_endpoints = (
-        np.array(plane.a2, dtype=np.float64)
-        + row_numbers * np.array(direction_a2_to_c)
+    right_endpoints = np.array(plane.a2, dtype=np.float64) + row_numbers * np.array(
+        direction_a2_to_c
     )
 
     row_directions = right_endpoints - left_endpoints
@@ -399,9 +379,7 @@ def project(volume, plane):
     last_steps = np.floor(row_lengths)
 
     if last_steps.max() > 2 * MAX_SIDE:
-        raise ValueError(
-            "Plane too wide (row length %.0f)" % last_steps.max()
-        )
+        raise ValueError("Plane too wide (row length %.0f)" % last_steps.max())
 
     step_numbers = np.arange(
         int(last_steps.max()) + 1,
@@ -409,9 +387,7 @@ def project(volume, plane):
     )[np.newaxis, :]
 
     image_columns = _round_array_nearest(
-        distance_b_to_c / 2.0
-        - row_lengths[:, np.newaxis] / 2.0
-        + step_numbers
+        distance_b_to_c / 2.0 - row_lengths[:, np.newaxis] / 2.0 + step_numbers
     )
 
     valid_samples = (
@@ -429,17 +405,12 @@ def project(volume, plane):
         )
         voxel_indices = _round_array_nearest(positions)
 
-        valid_samples &= (
-            (voxel_indices >= 0)
-            & (voxel_indices < axis_size)
-        )
+        valid_samples &= (voxel_indices >= 0) & (voxel_indices < axis_size)
 
         if flat_voxel_indices is None:
             flat_voxel_indices = voxel_indices
         else:
-            flat_voxel_indices = (
-                flat_voxel_indices * axis_size + voxel_indices
-            )
+            flat_voxel_indices = flat_voxel_indices * axis_size + voxel_indices
 
     sampled_values = volume_data.reshape(-1).take(
         flat_voxel_indices,
@@ -447,8 +418,7 @@ def project(volume, plane):
     )
 
     flat_image_positions = (
-        np.arange(row_count, dtype=np.int64)[:, np.newaxis]
-        * column_count
+        np.arange(row_count, dtype=np.int64)[:, np.newaxis] * column_count
         + image_columns
     )
     flat_image_positions[~valid_samples] = row_count * column_count
@@ -459,7 +429,7 @@ def project(volume, plane):
     )
     flat_image[flat_image_positions] = sampled_values
 
-    return flat_image[:row_count * column_count].reshape(
+    return flat_image[: row_count * column_count].reshape(
         row_count,
         column_count,
     )
@@ -502,8 +472,8 @@ def pad_gray(image, canvas_height, canvas_width):
     left = (canvas_width - image_width) // 2
 
     canvas[
-        top:top + image_height,
-        left:left + image_width,
+        top : top + image_height,
+        left : left + image_width,
     ] = image
 
     return canvas
@@ -697,8 +667,7 @@ def _run(arguments=None):
             projection = project(volume, plane)
         except ValueError as error:
             print(
-                "[warn] plane %d: %s - error frame written"
-                % (plane_number, error),
+                "[warn] plane %d: %s - error frame written" % (plane_number, error),
                 file=sys.stderr,
             )
             images.append(None)
@@ -729,11 +698,7 @@ def _run(arguments=None):
 
     assert len(images) == len(planes)
 
-    valid_images = [
-        image
-        for image in images
-        if image is not None
-    ]
+    valid_images = [image for image in images if image is not None]
     error_count = len(images) - len(valid_images)
 
     if error_count:
@@ -808,10 +773,7 @@ def main(arguments=None):
         EOFError,
         zlib.error,
     ) as error:
-        sys.exit(
-            "Error: %s: %s"
-            % (type(error).__name__, error)
-        )
+        sys.exit("Error: %s: %s" % (type(error).__name__, error))
 
 
 if __name__ == "__main__":
