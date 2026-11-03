@@ -1,4 +1,5 @@
 """Automated tests for Ex1.py.   Run:  python -m unittest discover -s tests -v"""
+
 import contextlib
 import io
 import math
@@ -15,6 +16,7 @@ sys.path.insert(0, ROOT)
 import Ex1 as pp  # noqa: E402
 
 import numpy as np  # noqa: E402
+
 SYN = os.path.join(ROOT, "data", "synthetic")
 MRHEAD = os.path.join(ROOT, "data", "MRHead_1.nrrd")
 
@@ -76,10 +78,12 @@ def index_value(x, y, z, shape):
 # Code follows below.
 # =============================================================================
 class TestNrrdReader(unittest.TestCase):
-    CASES = [("index_u8_raw_15x16x1.nrrd", (15, 16, 1), "uint8"),
-             ("index_u16_gzip_40x30x20.nrrd", (40, 30, 20), "uint16"),
-             ("index_u32_gzip_be_50x60x70.nrrd", (50, 60, 70), "uint32"),
-             ("index_i16_raw_20x20x20.nrrd", (20, 20, 20), "int16")]
+    CASES = [
+        ("index_u8_raw_15x16x1.nrrd", (15, 16, 1), "uint8"),
+        ("index_u16_gzip_40x30x20.nrrd", (40, 30, 20), "uint16"),
+        ("index_u32_gzip_be_50x60x70.nrrd", (50, 60, 70), "uint32"),
+        ("index_i16_raw_20x20x20.nrrd", (20, 20, 20), "int16"),
+    ]
 
     # =============================================================================
     # EXPLANATION
@@ -93,7 +97,9 @@ class TestNrrdReader(unittest.TestCase):
                 self.assertEqual(v.shape, shape)
                 self.assertEqual(v.data.dtype.name, dtype)
                 x, y, z = np.meshgrid(*(np.arange(s) for s in shape), indexing="ij")
-                self.assertTrue(np.array_equal(v.data, x + shape[0] * y + shape[0] * shape[1] * z))
+                self.assertTrue(
+                    np.array_equal(v.data, x + shape[0] * y + shape[0] * shape[1] * z)
+                )
 
     # =============================================================================
     # EXPLANATION
@@ -111,7 +117,9 @@ class TestNrrdReader(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_tiny_volume(self):
-        self.assertEqual(pp.load_nrrd(os.path.join(SYN, "tiny_u8_1x1x1.nrrd")).shape, (1, 1, 1))
+        self.assertEqual(
+            pp.load_nrrd(os.path.join(SYN, "tiny_u8_1x1x1.nrrd")).shape, (1, 1, 1)
+        )
 
     # =============================================================================
     # EXPLANATION
@@ -135,8 +143,11 @@ class TestNrrdReader(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             vals = np.arange(4 * 3 * 2, dtype="<u2")
             write_file(os.path.join(d, "v.raw"), vals.tobytes(), "wb")
-            write_file(os.path.join(d, "v.nhdr"), "NRRD0004\ntype: ushort\ndimension: 3\nsizes: 4 3 2\n"
-                       "encoding: raw\nendian: little\ndata file: v.raw\n\n")
+            write_file(
+                os.path.join(d, "v.nhdr"),
+                "NRRD0004\ntype: ushort\ndimension: 3\nsizes: 4 3 2\n"
+                "encoding: raw\nendian: little\ndata file: v.raw\n\n",
+            )
             v = pp.load_nrrd(os.path.join(d, "v.nhdr"))
             self.assertEqual(v.shape, (4, 3, 2))
             self.assertEqual(int(v.data[3, 2, 1]), 3 + 4 * 2 + 12 * 1)
@@ -181,12 +192,18 @@ class TestCsv(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_triangle_and_trapezoid(self):
-        pl = self._load(self.HDR + "3,1,2,3,4,5,6,7,8,9,,,\r\n4,0,0,0,0,0,5,0,4,0,0,4,5\r\n")
+        pl = self._load(
+            self.HDR + "3,1,2,3,4,5,6,7,8,9,,,\r\n4,0,0,0,0,0,5,0,4,0,0,4,5\r\n"
+        )
         self.assertEqual(len(pl), 2)
-        self.assertEqual((pl[0].a1, pl[0].b, pl[0].a2, pl[0].c),
-                         ((1, 2, 3), (4, 5, 6), (1, 2, 3), (7, 8, 9)))
-        self.assertEqual((pl[1].a1, pl[1].b, pl[1].a2, pl[1].c),
-                         ((0, 0, 0), (0, 0, 5), (0, 4, 0), (0, 4, 5)))
+        self.assertEqual(
+            (pl[0].a1, pl[0].b, pl[0].a2, pl[0].c),
+            ((1, 2, 3), (4, 5, 6), (1, 2, 3), (7, 8, 9)),
+        )
+        self.assertEqual(
+            (pl[1].a1, pl[1].b, pl[1].a2, pl[1].c),
+            ((0, 0, 0), (0, 0, 5), (0, 4, 0), (0, 4, 5)),
+        )
 
     # =============================================================================
     # EXPLANATION
@@ -194,7 +211,9 @@ class TestCsv(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_bom_blank_lines_and_given_file(self):
-        self.assertEqual(len(self._load("\ufeff" + self.HDR + "\r\n3,1,1,1,2,2,2,3,3,3,,,\r\n")), 1)
+        self.assertEqual(
+            len(self._load("\ufeff" + self.HDR + "\r\n3,1,1,1,2,2,2,3,3,3,,,\r\n")), 1
+        )
         pl = quiet(pp.load_planes, os.path.join(ROOT, "data", "planes_given.csv"))
         self.assertEqual([p is not None for p in pl], [True] * 4)
 
@@ -204,7 +223,9 @@ class TestCsv(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_bad_rows_keep_their_slot(self):
-        pl = self._load(self.HDR + "3,1,2,3\r\nabc,1\r\n5,1,2,3\r\n3,1,1,1,2,2,2,3,3,3,,,\r\n")
+        pl = self._load(
+            self.HDR + "3,1,2,3\r\nabc,1\r\n5,1,2,3\r\n3,1,1,1,2,2,2,3,3,3,,,\r\n"
+        )
         self.assertEqual(len(pl), 4)
         self.assertEqual([p is None for p in pl], [True, True, True, False])
 
@@ -224,7 +245,7 @@ class TestProjection(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.vol = pp.load_nrrd(os.path.join(SYN, "index_u16_gzip_40x30x20.nrrd"))
-        cls.M = cls.vol.data   # M[x,y,z] == index code
+        cls.M = cls.vol.data  # M[x,y,z] == index code
 
     # =============================================================================
     # EXPLANATION
@@ -244,7 +265,9 @@ class TestProjection(unittest.TestCase):
     # =============================================================================
     def test_axis_aligned_x_and_y_planes_exact(self):
         Ex = pp.project(self.vol, P((12, 0, 0), (12, 0, 19), (12, 29, 0), (12, 29, 19)))
-        self.assertTrue(np.array_equal(Ex, self.M[12, :29, 1:20].T))   # rows follow z, cols follow y
+        self.assertTrue(
+            np.array_equal(Ex, self.M[12, :29, 1:20].T)
+        )  # rows follow z, cols follow y
         Ey = pp.project(self.vol, P((0, 5, 0), (0, 5, 19), (39, 5, 0), (39, 5, 19)))
         self.assertTrue(np.array_equal(Ey, self.M[:39, 5, 1:20].T))
 
@@ -255,8 +278,11 @@ class TestProjection(unittest.TestCase):
     # =============================================================================
     def test_triangle_equals_degenerate_trapezoid(self):
         a, b, c = (20, 0, 0), (5, 29, 19), (35, 29, 19)
-        self.assertTrue(np.array_equal(pp.project(self.vol, P(a, b, c)),
-                                       pp.project(self.vol, P(a, b, a, c))))
+        self.assertTrue(
+            np.array_equal(
+                pp.project(self.vol, P(a, b, c)), pp.project(self.vol, P(a, b, a, c))
+            )
+        )
 
     # =============================================================================
     # EXPLANATION
@@ -266,8 +292,8 @@ class TestProjection(unittest.TestCase):
     def test_output_size_is_Dab_by_Dbc(self):
         a, b, c = (20, 0, 0), (5, 29, 19), (35, 29, 19)
         E = pp.project(self.vol, P(a, b, c))
-        dab = sum((i - j) ** 2 for i, j in zip(a, b)) ** .5
-        dbc = sum((i - j) ** 2 for i, j in zip(b, c)) ** .5
+        dab = sum((i - j) ** 2 for i, j in zip(a, b)) ** 0.5
+        dbc = sum((i - j) ** 2 for i, j in zip(b, c)) ** 0.5
         self.assertEqual(E.shape, (math.ceil(dab - 1e-9), math.ceil(dbc - 1e-9)))
 
     # =============================================================================
@@ -276,14 +302,19 @@ class TestProjection(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_outside_volume_is_zero(self):
-        E = pp.project(self.vol, P((100, 100, 100), (100, 100, 150), (150, 100, 100), (150, 100, 150)))
+        E = pp.project(
+            self.vol,
+            P((100, 100, 100), (100, 100, 150), (150, 100, 100), (150, 100, 150)),
+        )
         self.assertEqual(E.shape, (50, 50))
         self.assertFalse(E.any())
         # half inside / half outside: inside part exact, outside part zero
         E = pp.project(self.vol, P((0, 0, 7), (0, 29, 7), (79, 0, 7), (79, 29, 7)))
         self.assertEqual(E.shape, (29, 79))
-        self.assertTrue(np.array_equal(E[:, :40], self.M[:40, 1:30, 7].T))   # inside part exact
-        self.assertFalse(E[:, 40:].any())                                  # outside part black
+        self.assertTrue(
+            np.array_equal(E[:, :40], self.M[:40, 1:30, 7].T)
+        )  # inside part exact
+        self.assertFalse(E[:, 40:].any())  # outside part black
 
     # =============================================================================
     # EXPLANATION
@@ -296,9 +327,13 @@ class TestProjection(unittest.TestCase):
             pp.project(self.vol, P((20, 0, 0), (5, 29, 19), (35, 20, 10)))
         # just inside / just outside the tolerance
         a, b = (0.0, 0.0, 7.0), (0.0, 10.0, 7.0)
-        pp.project(self.vol, P(a, b, (10.0, 0.0005, 7.0)))            # |dab-dac| ~ 0.0005 -> valid
+        pp.project(
+            self.vol, P(a, b, (10.0, 0.0005, 7.0))
+        )  # |dab-dac| ~ 0.0005 -> valid
         with self.assertRaises(pp.InvalidPlaneError):
-            pp.project(self.vol, P(a, b, (0.0, -10.002, 7.0)))        # |dab-dac| = 0.002 -> invalid
+            pp.project(
+                self.vol, P(a, b, (0.0, -10.002, 7.0))
+            )  # |dab-dac| = 0.002 -> invalid
 
     # =============================================================================
     # EXPLANATION
@@ -316,7 +351,9 @@ class TestProjection(unittest.TestCase):
     # =============================================================================
     def test_one_voxel_volume(self):
         v = pp.load_nrrd(os.path.join(SYN, "tiny_u8_1x1x1.nrrd"))
-        E = pp.project(v, P((0, 0, 0), (0, 0, 5), (0, 5, 0), (0, 5, 5)))   # must not crash
+        E = pp.project(
+            v, P((0, 0, 0), (0, 0, 5), (0, 5, 0), (0, 5, 5))
+        )  # must not crash
         self.assertLessEqual(int(E.max()), 7)
 
     # =============================================================================
@@ -327,15 +364,18 @@ class TestProjection(unittest.TestCase):
     def test_property_random_planes_lie_on_the_plane(self):
         """Every non-zero pixel must come from a voxel within 0.5*sqrt(3) of the plane."""
         rnd = random.Random(1)
-        shape, tol = self.vol.shape, 0.5 * 3 ** 0.5 + 1e-6
+        shape, tol = self.vol.shape, 0.5 * 3**0.5 + 1e-6
         checked = 0
         for _ in range(40):
             a = np.array([rnd.uniform(0, 39), rnd.uniform(0, 29), rnd.uniform(0, 19)])
-            d = np.array([rnd.uniform(-1, 1) for _ in range(3)]); d *= rnd.uniform(8, 25) / np.linalg.norm(d)
-            side = np.cross(d, [0.3, 0.5, 0.8]); side *= rnd.uniform(4, 15) / np.linalg.norm(side)
-            b, c = a + d + side, a + d - side                      # |ab| == |ac|
+            d = np.array([rnd.uniform(-1, 1) for _ in range(3)])
+            d *= rnd.uniform(8, 25) / np.linalg.norm(d)
+            side = np.cross(d, [0.3, 0.5, 0.8])
+            side *= rnd.uniform(4, 15) / np.linalg.norm(side)
+            b, c = a + d + side, a + d - side  # |ab| == |ac|
             E = quiet(pp.project, self.vol, P(a, b, c))
-            n = np.cross(b - a, c - a); n /= np.linalg.norm(n)
+            n = np.cross(b - a, c - a)
+            n /= np.linalg.norm(n)
             for v in np.unique(E[E > 0]):
                 x, rest = int(v) % shape[0], int(v) // shape[0]
                 q = np.array([x, rest % shape[1], rest // shape[1]], float)
@@ -354,8 +394,10 @@ def read_video_frames(path):
     """Decode all frames with imageio (None if unavailable). The ResourceWarning raised inside
     imageio's ffmpeg generator is third-party noise and is silenced here only."""
     import warnings
+
     try:
         import imageio.v2 as iio
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", ResourceWarning)
             with iio.get_reader(path) as reader:
@@ -375,6 +417,7 @@ def frame_count(path):
         return len(frames)
     try:
         import cv2
+
         return int(cv2.VideoCapture(path).get(cv2.CAP_PROP_FRAME_COUNT))
     except Exception:
         return None
@@ -395,8 +438,12 @@ class TestDemoCli(unittest.TestCase):
     # =============================================================================
     def run_cli(self, nrrd, csv, out, env=None):
         e = dict(os.environ, **(env or {}))
-        return subprocess.run([sys.executable, os.path.join(ROOT, "Ex1.py"), nrrd, csv, out],
-                              capture_output=True, text=True, env=e)
+        return subprocess.run(
+            [sys.executable, os.path.join(ROOT, "Ex1.py"), nrrd, csv, out],
+            capture_output=True,
+            text=True,
+            env=e,
+        )
 
     # =============================================================================
     # EXPLANATION
@@ -421,8 +468,11 @@ class TestDemoCli(unittest.TestCase):
     def test_given_csv_and_bad_rows_keep_frame_count(self):
         with tempfile.TemporaryDirectory() as d:
             bad = os.path.join(d, "bad.csv")
-            write_file(bad, "hdr\n3,200,200,0,0,200,400,400,200,400,,,\nxx,1\n"
-                       "3,5,5,5,5,5,5,5,5,5,,,\n4,200,0,0,200,0,500,200,400,0,200,400,500\n")
+            write_file(
+                bad,
+                "hdr\n3,200,200,0,0,200,400,400,200,400,,,\nxx,1\n"
+                "3,5,5,5,5,5,5,5,5,5,,,\n4,200,0,0,200,0,500,200,400,0,200,400,500\n",
+            )
             out = os.path.join(d, "o.mp4")
             r = self.run_cli(MRHEAD, bad, out)
             self.assertEqual(r.returncode, 0, r.stderr)
@@ -436,7 +486,9 @@ class TestDemoCli(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_errors_give_message_and_nonzero_exit(self):
-        r = self.run_cli("missing.nrrd", os.path.join(ROOT, "data", "planes_demo.csv"), "x.mp4")
+        r = self.run_cli(
+            "missing.nrrd", os.path.join(ROOT, "data", "planes_demo.csv"), "x.mp4"
+        )
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("Error", r.stderr)
 
@@ -457,7 +509,7 @@ class TestPerformance(unittest.TestCase):
     def _fps(self, dtype, plane, n=15):
         data = np.random.randint(0, 255, (500, 500, 500)).astype(dtype)
         vol = pp.Volume(data, data.shape)
-        pp.project(vol, plane)                          # warm-up
+        pp.project(vol, plane)  # warm-up
         t = time.perf_counter()
         for _ in range(n):
             pp.project(vol, plane)
@@ -474,9 +526,17 @@ class TestPerformance(unittest.TestCase):
         for dt in (np.uint8, np.uint16):
             for name, pl in (("oblique", oblique), ("full 499x499", full)):
                 fps = self._fps(dt, pl)
-                print("\n  500^3 %s %-13s %6.0f fps %s" % (np.dtype(dt).name, name, fps,
-                                                          "(>=100 target met)" if fps >= 100 else "(below 100 target)"))
+                print(
+                    "\n  500^3 %s %-13s %6.0f fps %s"
+                    % (
+                        np.dtype(dt).name,
+                        name,
+                        fps,
+                        "(>=100 target met)" if fps >= 100 else "(below 100 target)",
+                    )
+                )
                 self.assertGreaterEqual(fps, 30)
+
 
 # ------------------------------------------- merged-review additions (v2)
 # =============================================================================
@@ -491,7 +551,17 @@ class TestRoundingAndInput(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_round_nearest_halves_away_from_zero(self):
-        for v, r in [(0.5, 1), (1.5, 2), (2.5, 3), (-0.5, -1), (-1.5, -2), (-2.5, -3), (0.49, 0), (-0.49, 0), (7.0, 7)]:
+        for v, r in [
+            (0.5, 1),
+            (1.5, 2),
+            (2.5, 3),
+            (-0.5, -1),
+            (-1.5, -2),
+            (-2.5, -3),
+            (0.49, 0),
+            (-0.49, 0),
+            (7.0, 7),
+        ]:
             self.assertEqual(pp.round_nearest(v), r, v)
 
     # =============================================================================
@@ -500,8 +570,26 @@ class TestRoundingAndInput(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_vectorised_rounding_matches_scalar(self):
-        a = np.array([-3.5, -2.5, -1.5, -0.5, -0.49, 0.0, 0.49, 0.5, 1.5, 2.5, 3.5, 1e6 + 0.5, -1e6 - 0.5])
-        self.assertEqual(pp._round_array_nearest(a).tolist(), [pp.round_nearest(float(v)) for v in a])
+        a = np.array(
+            [
+                -3.5,
+                -2.5,
+                -1.5,
+                -0.5,
+                -0.49,
+                0.0,
+                0.49,
+                0.5,
+                1.5,
+                2.5,
+                3.5,
+                1e6 + 0.5,
+                -1e6 - 0.5,
+            ]
+        )
+        self.assertEqual(
+            pp._round_array_nearest(a).tolist(), [pp.round_nearest(float(v)) for v in a]
+        )
 
     # =============================================================================
     # EXPLANATION
@@ -509,7 +597,9 @@ class TestRoundingAndInput(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_crlf_nrrd_header(self):
-        raw = ("NRRD0004\r\ntype: uchar\r\ndimension: 3\r\nsizes: 2 2 1\r\nencoding: raw\r\n\r\n").encode() + bytes([1, 2, 3, 4])
+        raw = (
+            "NRRD0004\r\ntype: uchar\r\ndimension: 3\r\nsizes: 2 2 1\r\nencoding: raw\r\n\r\n"
+        ).encode() + bytes([1, 2, 3, 4])
         with tempfile.TemporaryDirectory() as d:
             p = os.path.join(d, "crlf.nrrd")
             write_file(p, raw, "wb")
@@ -524,8 +614,14 @@ class TestRoundingAndInput(unittest.TestCase):
     # =============================================================================
     def test_nonfinite_and_malformed_csv_rows_rejected(self):
         hdr = "n,x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4\n"
-        rows = ["3,nan,0,0,1,1,1,2,2,2,,,", "3,inf,0,0,1,1,1,2,2,2,,,", "3.5,0,0,0,1,1,1,2,2,2,,,",
-                "3,0,0,0,1,1,1,2,2,,,,", "4,0,0,0,1,1,1,2,2,2,,,", "5,0,0,0,1,1,1,2,2,2,3,3,3"]
+        rows = [
+            "3,nan,0,0,1,1,1,2,2,2,,,",
+            "3,inf,0,0,1,1,1,2,2,2,,,",
+            "3.5,0,0,0,1,1,1,2,2,2,,,",
+            "3,0,0,0,1,1,1,2,2,,,,",
+            "4,0,0,0,1,1,1,2,2,2,,,",
+            "5,0,0,0,1,1,1,2,2,2,3,3,3",
+        ]
         with tempfile.TemporaryDirectory() as d:
             p = os.path.join(d, "bad.csv")
             write_file(p, hdr + "\n".join(rows) + "\n")
@@ -551,8 +647,12 @@ class TestRoundingAndInput(unittest.TestCase):
         """Q&A 1b: dist(a1,a2) <= dist(b,c) is required."""
         vol = pp.load_nrrd(os.path.join(SYN, "index_u16_gzip_40x30x20.nrrd"))
         with self.assertRaises(pp.InvalidPlaneError):
-            pp.project(vol, P((0, 0, 5), (10, 29, 5), (39, 0, 5), (29, 29, 5)))   # |a1a2|=39 > |bc|=19
-        pp.project(vol, P((0, 0, 5), (0, 29, 5), (39, 0, 5), (39, 29, 5)))         # equality is allowed
+            pp.project(
+                vol, P((0, 0, 5), (10, 29, 5), (39, 0, 5), (29, 29, 5))
+            )  # |a1a2|=39 > |bc|=19
+        pp.project(
+            vol, P((0, 0, 5), (0, 29, 5), (39, 0, 5), (39, 29, 5))
+        )  # equality is allowed
 
     # =============================================================================
     # EXPLANATION
@@ -563,8 +663,10 @@ class TestRoundingAndInput(unittest.TestCase):
         """Dab is not an integer: rows advance by exactly one unit (assignment), not by Dab/rows."""
         vol = pp.load_nrrd(os.path.join(SYN, "index_u16_gzip_40x30x20.nrrd"))
         E = pp.project(vol, P((0, 0, 7), (0, 10.4, 7), (30, 0, 7), (30, 10.4, 7)))
-        self.assertEqual(E.shape, (11, 30))                                  # loop `y < 10.4` runs 11 times
-        self.assertTrue(np.array_equal(E[:, :30], vol.data[:30, 1:12, 7].T))   # y+1 = 1..11 (unit steps)
+        self.assertEqual(E.shape, (11, 30))  # loop `y < 10.4` runs 11 times
+        self.assertTrue(
+            np.array_equal(E[:, :30], vol.data[:30, 1:12, 7].T)
+        )  # y+1 = 1..11 (unit steps)
 
     # =============================================================================
     # EXPLANATION
@@ -574,16 +676,29 @@ class TestRoundingAndInput(unittest.TestCase):
     def test_cli_corrupt_nrrd_gives_clean_error(self):
         with tempfile.TemporaryDirectory() as d:
             bad = os.path.join(d, "bad.nrrd")
-            write_file(bad, b"NRRD0004\ntype: uchar\ndimension: 3\nsizes: 9 9 9\nencoding: raw\n\nabc", "wb")
-            r = subprocess.run([sys.executable, os.path.join(ROOT, "Ex1.py"), bad,
-                                os.path.join(ROOT, "data", "planes_demo.csv"), os.path.join(d, "o.mp4")],
-                               capture_output=True, text=True)
+            write_file(
+                bad,
+                b"NRRD0004\ntype: uchar\ndimension: 3\nsizes: 9 9 9\nencoding: raw\n\nabc",
+                "wb",
+            )
+            r = subprocess.run(
+                [
+                    sys.executable,
+                    os.path.join(ROOT, "Ex1.py"),
+                    bad,
+                    os.path.join(ROOT, "data", "planes_demo.csv"),
+                    os.path.join(d, "o.mp4"),
+                ],
+                capture_output=True,
+                text=True,
+            )
         self.assertEqual(r.returncode, 1)
         # Judge our program only: its LAST stderr line must be the clean message.
         # (An uncaught exception would end with "ValueError: ..." instead, and
         # unrelated noise written earlier by the environment is ignored.)
         last = [l for l in r.stderr.splitlines() if l.strip()][-1]
         self.assertTrue(last.startswith("Error: ValueError: Invalid NRRD file"), last)
+
 
 # ------------------------------------- literal assignment pseudo-code (oracle)
 # =============================================================================
@@ -593,29 +708,36 @@ class TestRoundingAndInput(unittest.TestCase):
 # =============================================================================
 def reference_projection(M, a1, b, a2, c):
     """Straight transcription of the instructor's pseudo-code (steps 1-6), plain Python,
-    with the documented decisions: round half away from zero, x rounded, out-of-range dropped."""
+    with the documented decisions: round half away from zero, x rounded, out-of-range dropped.
+    """
     sub = lambda p, q: [p[i] - q[i] for i in range(3)]
     norm = lambda v: math.sqrt(sum(t * t for t in v))
     Dab, Dbc = norm(sub(b, a1)), norm(sub(c, b))
     vab = [t / Dab for t in sub(b, a1)]
     vac = [t / norm(sub(c, a2)) for t in sub(c, a2)]
-    rows, cols = math.ceil(Dab - 1e-9), math.ceil(Dbc - 1e-9)   # `y < Dab` runs ceil(Dab) times
+    rows, cols = math.ceil(Dab - 1e-9), math.ceil(
+        Dbc - 1e-9
+    )  # `y < Dab` runs ceil(Dab) times
     E = [[0] * cols for _ in range(rows)]
     p1, p2 = list(a1), list(a2)
     sx, sy, sz = M.shape
-    for y in range(rows):                                  # 5. for y
-        p1 = [p1[i] + vab[i] for i in range(3)]            # a. a1 = a1 + v(ab)
-        p2 = [p2[i] + vac[i] for i in range(3)]            # b. a2 = a2 + v(ac)
-        p = list(p1)                                       # c. p = a1
-        d12 = norm(sub(p2, p1))                            # d.
-        dp = [t / d12 for t in sub(p2, p1)] if d12 > 1e-12 else [0.0] * 3   # e.
-        for x1 in range(int(math.floor(d12)) + 1):         # f. for x1 <= d12
+    for y in range(rows):  # 5. for y
+        p1 = [p1[i] + vab[i] for i in range(3)]  # a. a1 = a1 + v(ab)
+        p2 = [p2[i] + vac[i] for i in range(3)]  # b. a2 = a2 + v(ac)
+        p = list(p1)  # c. p = a1
+        d12 = norm(sub(p2, p1))  # d.
+        dp = [t / d12 for t in sub(p2, p1)] if d12 > 1e-12 else [0.0] * 3  # e.
+        for x1 in range(int(math.floor(d12)) + 1):  # f. for x1 <= d12
             q = [pp.round_nearest(t) for t in p]
-            v = M[q[0], q[1], q[2]] if (0 <= q[0] < sx and 0 <= q[1] < sy and 0 <= q[2] < sz) else 0   # i.
+            v = (
+                M[q[0], q[1], q[2]]
+                if (0 <= q[0] < sx and 0 <= q[1] < sy and 0 <= q[2] < sz)
+                else 0
+            )  # i.
             x = pp.round_nearest(Dbc / 2 - d12 / 2 + x1)  # ii.
             if 0 <= x < cols:
-                E[y][x] = v                                # iii.
-            p = [p[i] + dp[i] for i in range(3)]           # iv.
+                E[y][x] = v  # iii.
+            p = [p[i] + dp[i] for i in range(3)]  # iv.
     return np.array(E, dtype=M.dtype)
 
 
@@ -647,14 +769,22 @@ class TestAgainstAssignmentPseudoCode(unittest.TestCase):
         rnd = np.random.default_rng(11)
         planes = []
         for k in range(30):
-            a = np.array([rnd.uniform(-20, 276), rnd.uniform(-20, 276), rnd.uniform(-10, 140)])
-            d = rnd.normal(size=3); d *= rnd.uniform(15, 140) / np.linalg.norm(d)
-            s = np.cross(d, rnd.normal(size=3)); s *= rnd.uniform(8, 110) / np.linalg.norm(s)
-            if k % 2 == 0:                                    # triangle a, a+d+s, a+d-s
-                planes.append(pp.Plane(tuple(a), tuple(a + d + s), tuple(a), tuple(a + d - s)))
-            else:                                             # trapezoid a', b, a'', c  (a'' = a' + t)
+            a = np.array(
+                [rnd.uniform(-20, 276), rnd.uniform(-20, 276), rnd.uniform(-10, 140)]
+            )
+            d = rnd.normal(size=3)
+            d *= rnd.uniform(15, 140) / np.linalg.norm(d)
+            s = np.cross(d, rnd.normal(size=3))
+            s *= rnd.uniform(8, 110) / np.linalg.norm(s)
+            if k % 2 == 0:  # triangle a, a+d+s, a+d-s
+                planes.append(
+                    pp.Plane(tuple(a), tuple(a + d + s), tuple(a), tuple(a + d - s))
+                )
+            else:  # trapezoid a', b, a'', c  (a'' = a' + t)
                 t = s * rnd.uniform(0.1, 0.9)
-                planes.append(pp.Plane(tuple(a), tuple(a + d), tuple(a + t), tuple(a + t + d)))
+                planes.append(
+                    pp.Plane(tuple(a), tuple(a + d), tuple(a + t), tuple(a + t + d))
+                )
         self._compare(vol, planes)
 
     # =============================================================================
@@ -665,7 +795,9 @@ class TestAgainstAssignmentPseudoCode(unittest.TestCase):
     def test_given_csv_rows_1_2_4(self):
         vol = pp.load_nrrd(MRHEAD)
         pls = quiet(pp.load_planes, os.path.join(ROOT, "data", "planes_given.csv"))
-        self._compare(vol, [pls[0], pls[1], pls[3]])           # row 3 is deliberately not isosceles
+        self._compare(
+            vol, [pls[0], pls[1], pls[3]]
+        )  # row 3 is deliberately not isosceles
 
     # =============================================================================
     # EXPLANATION
@@ -687,13 +819,22 @@ class TestAgainstAssignmentPseudoCode(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_all_dtypes_on_index_volumes(self):
-        for name in ("index_u8_raw_15x16x1.nrrd", "index_u16_gzip_40x30x20.nrrd",
-                     "index_u32_gzip_be_50x60x70.nrrd", "index_i16_raw_20x20x20.nrrd"):
+        for name in (
+            "index_u8_raw_15x16x1.nrrd",
+            "index_u16_gzip_40x30x20.nrrd",
+            "index_u32_gzip_be_50x60x70.nrrd",
+            "index_i16_raw_20x20x20.nrrd",
+        ):
             vol = pp.load_nrrd(os.path.join(SYN, name))
             sx, sy, sz = vol.shape
-            a = (sx / 2.0, sy / 2.0, 1.0)                      # isosceles: b = a+d+s, c = a+d-s
+            a = (sx / 2.0, sy / 2.0, 1.0)  # isosceles: b = a+d+s, c = a+d-s
             d, s = (0.0, 0.0, sz - 3.0), (sx / 2.0 - 2.0, sy / 3.0, 0.0)
-            pl = pp.Plane(a, tuple(a[i] + d[i] + s[i] for i in range(3)), a, tuple(a[i] + d[i] - s[i] for i in range(3)))
+            pl = pp.Plane(
+                a,
+                tuple(a[i] + d[i] + s[i] for i in range(3)),
+                a,
+                tuple(a[i] + d[i] - s[i] for i in range(3)),
+            )
             self._compare(vol, [pl])
 
     # =============================================================================
@@ -705,10 +846,16 @@ class TestAgainstAssignmentPseudoCode(unittest.TestCase):
         """Q&A 1c: a1->b and a2->c must be on one plane (tolerance EPS)."""
         vol = pp.load_nrrd(os.path.join(SYN, "index_u16_gzip_40x30x20.nrrd"))
         with self.assertRaises(pp.InvalidPlaneError):
-            pp.project(vol, P((0, 0, 5), (0, 20, 5), (30, 0, 5), (30, 20, 15)))        # 10 voxels off
+            pp.project(
+                vol, P((0, 0, 5), (0, 20, 5), (30, 0, 5), (30, 20, 15))
+            )  # 10 voxels off
         with self.assertRaises(pp.InvalidPlaneError):
-            pp.project(vol, P((0, 0, 5), (0, 20, 5), (30, 0, 5), (30, 20, 5.01)))      # 0.01 > EPS
-        pp.project(vol, P((0, 0, 5), (0, 20, 5), (30, 0, 5), (30, 20, 5.0004)))        # 0.0004 < EPS
+            pp.project(
+                vol, P((0, 0, 5), (0, 20, 5), (30, 0, 5), (30, 20, 5.01))
+            )  # 0.01 > EPS
+        pp.project(
+            vol, P((0, 0, 5), (0, 20, 5), (30, 0, 5), (30, 20, 5.0004))
+        )  # 0.0004 < EPS
 
     # =============================================================================
     # EXPLANATION
@@ -717,8 +864,10 @@ class TestAgainstAssignmentPseudoCode(unittest.TestCase):
     # =============================================================================
     def test_collinear_points_are_invalid(self):
         vol = pp.load_nrrd(os.path.join(SYN, "index_u16_gzip_40x30x20.nrrd"))
-        for pts in (((5, 5, 5), (5, 5, 15), (5, 5, -5)),                       # triangle a,b,c on one line
-                    ((0, 0, 5), (0, 10, 5), (0, 20, 5), (0, 30, 5))):          # trapezoid a1,b,a2 collinear
+        for pts in (
+            ((5, 5, 5), (5, 5, 15), (5, 5, -5)),  # triangle a,b,c on one line
+            ((0, 0, 5), (0, 10, 5), (0, 20, 5), (0, 30, 5)),
+        ):  # trapezoid a1,b,a2 collinear
             with self.assertRaises(pp.InvalidPlaneError):
                 pp.project(vol, P(*pts))
 
@@ -739,10 +888,12 @@ class TestInvalidPlanesProduceErrorFrames(unittest.TestCase):
     def test_error_frame_has_marking_and_is_mostly_black(self):
         f = pp.make_error_frame(100, 160, 3)
         self.assertEqual(f.shape, (100, 160))
-        self.assertTrue(f.any())                                  # marking present
-        self.assertGreater((f == 0).mean(), 0.7)                  # still a "black" frame
-        self.assertFalse(np.array_equal(f, pp.make_error_frame(100, 160, 4)))   # different number -> different marking
-        pp.make_error_frame(2, 2, 1)                             # tiny sizes must not crash
+        self.assertTrue(f.any())  # marking present
+        self.assertGreater((f == 0).mean(), 0.7)  # still a "black" frame
+        self.assertFalse(
+            np.array_equal(f, pp.make_error_frame(100, 160, 4))
+        )  # different number -> different marking
+        pp.make_error_frame(2, 2, 1)  # tiny sizes must not crash
 
     # =============================================================================
     # EXPLANATION
@@ -752,31 +903,37 @@ class TestInvalidPlanesProduceErrorFrames(unittest.TestCase):
     def test_cli_valid_planes_stay_correct_next_to_invalid_ones(self):
         with tempfile.TemporaryDirectory() as d:
             csvp = os.path.join(d, "mixed.csv")
-            write_file(csvp, "hdr\n"
-                       "3,200,200,0,0,200,400,400,200,400,,,\n"        # valid
-                       "3,200,200,-30,-50,200,400,400,250,400,,,\n"    # not isosceles -> error frame
-                       "abc,1,2\n"                                       # malformed -> error frame
-                       "4,0,0,5,10,29,5,39,0,5,29,29,5\n"               # |a1a2| > |bc| -> error frame
-                       "4,200,0,0,200,0,500,200,400,0,200,400,500\n")   # valid
+            write_file(
+                csvp,
+                "hdr\n"
+                "3,200,200,0,0,200,400,400,200,400,,,\n"  # valid
+                "3,200,200,-30,-50,200,400,400,250,400,,,\n"  # not isosceles -> error frame
+                "abc,1,2\n"  # malformed -> error frame
+                "4,0,0,5,10,29,5,39,0,5,29,29,5\n"  # |a1a2| > |bc| -> error frame
+                "4,200,0,0,200,0,500,200,400,0,200,400,500\n",
+            )  # valid
             out = os.path.join(d, "o.mp4")
-            r = subprocess.run([sys.executable, os.path.join(ROOT, "Ex1.py"), MRHEAD, csvp, out],
-                               capture_output=True, text=True)
+            r = subprocess.run(
+                [sys.executable, os.path.join(ROOT, "Ex1.py"), MRHEAD, csvp, out],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertEqual(r.stderr.count("error frame written"), 3)
             self.assertIn("5 frame(s) (2 valid, 3 error)", r.stdout)
             n = frame_count(out)
             if n is not None:
-                self.assertEqual(n, 5)                                # one frame per CSV row
+                self.assertEqual(n, 5)  # one frame per CSV row
             frames = read_video_frames(out)
             if frames is None:
                 return
             gray = [f[:, :, 0].astype(float) for f in frames]
-            for k in (1, 2, 3):                                       # error frames: border is white
+            for k in (1, 2, 3):  # error frames: border is white
                 self.assertGreater(gray[k][0, :].mean(), 200)
                 self.assertGreater(gray[k][:, 0].mean(), 200)
-            for k in (0, 4):                                          # valid frames: not an error frame
+            for k in (0, 4):  # valid frames: not an error frame
                 self.assertLess(gray[k][0, :].mean(), 100)
-            self.assertGreater(abs(gray[1] - gray[2]).sum(), 0)       # numbers differ
+            self.assertGreater(abs(gray[1] - gray[2]).sum(), 0)  # numbers differ
 
 
 # =============================================================================
@@ -798,8 +955,11 @@ class TestReviewFindings(unittest.TestCase):
           rows = ceil(2) = 2, cols = ceil(sqrt5) = 3, M[x,y,z] = x + 3*y
           y=0: a1=(1,0,0) a2=(1,1,0) d12=1  dp=(0,1,0)  x = round(sqrt5/2 - 1/2 + x1) = 1, 2 -> M[1,0,0]=1, M[1,1,0]=4
           y=1: a1=(2,0,0) a2=(1,2,0) d12=sqrt5 dp=(-1,2,0)/sqrt5  x = x1 = 0,1,2
-               points (2,0,0), (1.55,0.89,0)->(2,1,0), (1.11,1.79,0)->(1,2,0) -> 2, 5, 7"""
-        data = np.array([[[x + 3 * y] for y in range(3)] for x in range(3)], dtype=np.uint16)   # shape (3,3,1)
+               points (2,0,0), (1.55,0.89,0)->(2,1,0), (1.11,1.79,0)->(1,2,0) -> 2, 5, 7
+        """
+        data = np.array(
+            [[[x + 3 * y] for y in range(3)] for x in range(3)], dtype=np.uint16
+        )  # shape (3,3,1)
         vol = pp.Volume(data, data.shape)
         pl = pp.Plane((0, 0, 0), (2, 0, 0), (1, 0, 0), (1, 2, 0))
         expected = np.array([[0, 1, 4], [2, 5, 7]], dtype=np.uint16)
@@ -813,7 +973,7 @@ class TestReviewFindings(unittest.TestCase):
     def test_rows_are_not_inflated_by_float_noise(self):
         """True length 7, math.dist gives 7.000000000000001: the loop `y < 7` runs 7 times, not 8."""
         a, b = (21.6, 38.1, 0.1), (25.8, 43.7, 0.1)
-        self.assertGreater(math.dist(a, b), 7.0)                     # the float noise really exists
+        self.assertGreater(math.dist(a, b), 7.0)  # the float noise really exists
         pl = pp.Plane(a, b, (22.6, 38.1, 0.1), (26.8, 43.7, 0.1))
         _, _, rows, cols, _ = pp._plane_geometry(pl)
         self.assertEqual((rows, cols), (7, 1))
@@ -825,25 +985,47 @@ class TestReviewFindings(unittest.TestCase):
     # =============================================================================
     def test_no_duplicate_write_columns_and_equals_pseudo_code(self):
         """Tie-heavy planes (half-integer offsets, negative coordinates): no two samples of a row share a
-        destination column, so the NumPy scatter is deterministic and equals the literal pseudo-code transcription."""
+        destination column, so the NumPy scatter is deterministic and equals the literal pseudo-code transcription.
+        """
         vol = pp.load_nrrd(os.path.join(SYN, "index_u16_gzip_40x30x20.nrrd"))
         rnd = random.Random(5)
         checked = 0
         for _ in range(300):
-            a = [rnd.randint(-8, 30) / 2.0, rnd.randint(-8, 20) / 2.0, rnd.randint(0, 38) / 2.0]
+            a = [
+                rnd.randint(-8, 30) / 2.0,
+                rnd.randint(-8, 20) / 2.0,
+                rnd.randint(0, 38) / 2.0,
+            ]
             L, W = rnd.randint(3, 18), rnd.randint(2, 30)
             w0 = rnd.randint(0, W)
-            pl = pp.Plane(tuple(a), (a[0], a[1] + L, a[2]), (a[0] + w0, a[1], a[2]), (a[0] + w0 + (W - w0) * 0, a[1] + L, a[2]))
-            pl = pp.Plane(tuple(a), (a[0], a[1] + L, a[2]), (a[0] + W / 2.0, a[1], a[2]), (a[0] + W / 2.0, a[1] + L, a[2]))
+            pl = pp.Plane(
+                tuple(a),
+                (a[0], a[1] + L, a[2]),
+                (a[0] + w0, a[1], a[2]),
+                (a[0] + w0 + (W - w0) * 0, a[1] + L, a[2]),
+            )
+            pl = pp.Plane(
+                tuple(a),
+                (a[0], a[1] + L, a[2]),
+                (a[0] + W / 2.0, a[1], a[2]),
+                (a[0] + W / 2.0, a[1] + L, a[2]),
+            )
             step1, step2, rows, cols, dbc = pp._plane_geometry(pl)
             for y in range(rows):
                 a1 = [pl.a1[i] + (y + 1) * step1[i] for i in range(3)]
                 a2 = [pl.a2[i] + (y + 1) * step2[i] for i in range(3)]
                 d12 = math.dist(a1, a2)
-                xs = [pp.round_nearest(dbc / 2.0 - d12 / 2.0 + x1) for x1 in range(int(math.floor(d12)) + 1)]
+                xs = [
+                    pp.round_nearest(dbc / 2.0 - d12 / 2.0 + x1)
+                    for x1 in range(int(math.floor(d12)) + 1)
+                ]
                 self.assertEqual(len(xs), len(set(xs)))
-            self.assertTrue(np.array_equal(pp.project(vol, pl),
-                                           reference_projection(vol.data, pl.a1, pl.b, pl.a2, pl.c)))
+            self.assertTrue(
+                np.array_equal(
+                    pp.project(vol, pl),
+                    reference_projection(vol.data, pl.a1, pl.b, pl.a2, pl.c),
+                )
+            )
             checked += 1
         self.assertEqual(checked, 300)
 
@@ -873,8 +1055,12 @@ class TestCsvExtraFields(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_n3_with_extra_points_is_invalid(self):
-        planes = self._load(["3,200,200,0,0,200,400,400,200,400,9,9,9",            # a 4th point with N=3
-                             "3,200,200,0,0,200,400,400,200,400,1,2,3,4,5,6"])      # two extra points
+        planes = self._load(
+            [
+                "3,200,200,0,0,200,400,400,200,400,9,9,9",  # a 4th point with N=3
+                "3,200,200,0,0,200,400,400,200,400,1,2,3,4,5,6",
+            ]
+        )  # two extra points
         self.assertEqual(planes, [None, None])
 
     # =============================================================================
@@ -883,7 +1069,9 @@ class TestCsvExtraFields(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_n4_with_a_fifth_point_is_invalid(self):
-        self.assertEqual(self._load(["4,200,0,0,200,0,500,200,400,0,200,400,500,7,7,7"]), [None])
+        self.assertEqual(
+            self._load(["4,200,0,0,200,0,500,200,400,0,200,400,500,7,7,7"]), [None]
+        )
 
     # =============================================================================
     # EXPLANATION
@@ -891,9 +1079,13 @@ class TestCsvExtraFields(unittest.TestCase):
     # Code follows below.
     # =============================================================================
     def test_empty_padding_is_still_valid(self):
-        planes = self._load(["3,200,200,0,0,200,400,400,200,400,,,",
-                             "3,200,200,0,0,200,400,400,200,400",
-                             "4,200,0,0,200,0,500,200,400,0,200,400,500,,"])
+        planes = self._load(
+            [
+                "3,200,200,0,0,200,400,400,200,400,,,",
+                "3,200,200,0,0,200,400,400,200,400",
+                "4,200,0,0,200,0,500,200,400,0,200,400,500,,",
+            ]
+        )
         self.assertTrue(all(p is not None for p in planes))
 
     # =============================================================================
@@ -904,15 +1096,20 @@ class TestCsvExtraFields(unittest.TestCase):
     def test_cli_gives_error_frames_for_rows_with_extra_points(self):
         with tempfile.TemporaryDirectory() as d:
             csvp = os.path.join(d, "x.csv")
-            write_file(csvp, "hdr\n3,200,200,0,0,200,400,400,200,400,9,9,9\n"
-                             "3,200,200,0,0,200,400,400,200,400,,,\n"
-                             "4,200,0,0,200,0,500,200,400,0,200,400,500,7,7,7\n")
+            write_file(
+                csvp,
+                "hdr\n3,200,200,0,0,200,400,400,200,400,9,9,9\n"
+                "3,200,200,0,0,200,400,400,200,400,,,\n"
+                "4,200,0,0,200,0,500,200,400,0,200,400,500,7,7,7\n",
+            )
             out = os.path.join(d, "o.mp4")
-            r = subprocess.run([sys.executable, os.path.join(ROOT, "Ex1.py"), MRHEAD, csvp, out],
-                               capture_output=True, text=True)
+            r = subprocess.run(
+                [sys.executable, os.path.join(ROOT, "Ex1.py"), MRHEAD, csvp, out],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn("3 frame(s) (1 valid, 2 error)", r.stdout)
-
 
 
 # =============================================================================
@@ -949,9 +1146,15 @@ class TestDefaultFileDiscovery(unittest.TestCase):
 # =============================================================================
 class TestClassDataset(unittest.TestCase):
     """The data set shared by the class (data/class_dataset): every plane of every CSV must be valid
-    (the CSV files were written for the lecturer's rules) and must give a non-empty image."""
-    CASES = [("onion", "class_dataset/onion.nrrd", 120), ("biscuit_cake", "class_dataset/biscuit_cake.nrrd", 120),
-             ("swiss_roll", "class_dataset/swiss_roll.nrrd", 120), ("head", "MRHead_1.nrrd", 280)]
+    (the CSV files were written for the lecturer's rules) and must give a non-empty image.
+    """
+
+    CASES = [
+        ("onion", "class_dataset/onion.nrrd", 120),
+        ("biscuit_cake", "class_dataset/biscuit_cake.nrrd", 120),
+        ("swiss_roll", "class_dataset/swiss_roll.nrrd", 120),
+        ("head", "MRHead_1.nrrd", 280),
+    ]
 
     # =============================================================================
     # EXPLANATION
@@ -963,11 +1166,15 @@ class TestClassDataset(unittest.TestCase):
             with self.subTest(name):
                 path = os.path.join(ROOT, "data", nrrd_file)
                 vol = pp.load_nrrd(path)
-                planes = pp.load_planes(os.path.join(ROOT, "data", "class_dataset", "csv", name + ".csv"))
+                planes = pp.load_planes(
+                    os.path.join(ROOT, "data", "class_dataset", "csv", name + ".csv")
+                )
                 self.assertEqual(len(planes), count)
                 for number, pl in enumerate(planes, start=1):
                     self.assertIsNotNone(pl, "CSV row %d is invalid" % number)
-                    self.assertTrue(pp.project(vol, pl).any(), "plane %d is empty" % number)
+                    self.assertTrue(
+                        pp.project(vol, pl).any(), "plane %d is empty" % number
+                    )
 
     # =============================================================================
     # EXPLANATION
@@ -977,10 +1184,17 @@ class TestClassDataset(unittest.TestCase):
     def test_cli_gives_one_frame_per_row(self):
         with tempfile.TemporaryDirectory() as d:
             out = os.path.join(d, "o.mp4")
-            r = subprocess.run([sys.executable, os.path.join(ROOT, "Ex1.py"),
-                                os.path.join(ROOT, "data", "class_dataset", "onion.nrrd"),
-                                os.path.join(ROOT, "data", "class_dataset", "csv", "onion.csv"), out],
-                               capture_output=True, text=True)
+            r = subprocess.run(
+                [
+                    sys.executable,
+                    os.path.join(ROOT, "Ex1.py"),
+                    os.path.join(ROOT, "data", "class_dataset", "onion.nrrd"),
+                    os.path.join(ROOT, "data", "class_dataset", "csv", "onion.csv"),
+                    out,
+                ],
+                capture_output=True,
+                text=True,
+            )
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn("Wrote 120 frame(s) (120 valid, 0 error)", r.stdout)
 
